@@ -14,16 +14,849 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      companies: {
+        Row: {
+          business_type: Database["public"]["Enums"]["business_type"]
+          country: string | null
+          created_at: string
+          created_by: string | null
+          document_expiry_warning_days: number
+          fleet_size: Database["public"]["Enums"]["fleet_size"] | null
+          id: string
+          name: string
+          terminology: Database["public"]["Enums"]["terminology"]
+          updated_at: string
+        }
+        Insert: {
+          business_type?: Database["public"]["Enums"]["business_type"]
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          document_expiry_warning_days?: number
+          fleet_size?: Database["public"]["Enums"]["fleet_size"] | null
+          id?: string
+          name: string
+          terminology?: Database["public"]["Enums"]["terminology"]
+          updated_at?: string
+        }
+        Update: {
+          business_type?: Database["public"]["Enums"]["business_type"]
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          document_expiry_warning_days?: number
+          fleet_size?: Database["public"]["Enums"]["fleet_size"] | null
+          id?: string
+          name?: string
+          terminology?: Database["public"]["Enums"]["terminology"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      company_members: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_members_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customers: {
+        Row: {
+          address: string | null
+          company_id: string
+          contact_person: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          company_id: string
+          contact_person?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          company_id?: string
+          contact_person?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          company_id: string
+          created_at: string
+          document_type: string
+          expiry_date: string | null
+          file_url: string | null
+          id: string
+          issue_date: string | null
+          name: string
+          notes: string | null
+          owner_id: string
+          owner_type: Database["public"]["Enums"]["document_owner_type"]
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          document_type: string
+          expiry_date?: string | null
+          file_url?: string | null
+          id?: string
+          issue_date?: string | null
+          name: string
+          notes?: string | null
+          owner_id: string
+          owner_type: Database["public"]["Enums"]["document_owner_type"]
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          document_type?: string
+          expiry_date?: string | null
+          file_url?: string | null
+          id?: string
+          issue_date?: string | null
+          name?: string
+          notes?: string | null
+          owner_id?: string
+          owner_type?: Database["public"]["Enums"]["document_owner_type"]
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drivers: {
+        Row: {
+          assigned_vehicle_id: string | null
+          company_id: string
+          created_at: string
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          employee_ref: string | null
+          full_name: string
+          id: string
+          licence_class: string | null
+          licence_expiry: string | null
+          licence_number: string | null
+          notes: string | null
+          phone: string | null
+          status: Database["public"]["Enums"]["driver_status"]
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          assigned_vehicle_id?: string | null
+          company_id: string
+          created_at?: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          employee_ref?: string | null
+          full_name: string
+          id?: string
+          licence_class?: string | null
+          licence_expiry?: string | null
+          licence_number?: string | null
+          notes?: string | null
+          phone?: string | null
+          status?: Database["public"]["Enums"]["driver_status"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          assigned_vehicle_id?: string | null
+          company_id?: string
+          created_at?: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          employee_ref?: string | null
+          full_name?: string
+          id?: string
+          licence_class?: string | null
+          licence_expiry?: string | null
+          licence_number?: string | null
+          notes?: string | null
+          phone?: string | null
+          status?: Database["public"]["Enums"]["driver_status"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drivers_assigned_vehicle_fk"
+            columns: ["assigned_vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drivers_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      incidents: {
+        Row: {
+          company_id: string
+          created_at: string
+          description: string
+          driver_id: string | null
+          id: string
+          incident_type: Database["public"]["Enums"]["incident_type"]
+          job_id: string | null
+          location: string | null
+          occurred_at: string
+          photo_urls: string[] | null
+          reported_by: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          severity: Database["public"]["Enums"]["incident_severity"]
+          status: Database["public"]["Enums"]["incident_status"]
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          description: string
+          driver_id?: string | null
+          id?: string
+          incident_type?: Database["public"]["Enums"]["incident_type"]
+          job_id?: string | null
+          location?: string | null
+          occurred_at?: string
+          photo_urls?: string[] | null
+          reported_by?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          severity?: Database["public"]["Enums"]["incident_severity"]
+          status?: Database["public"]["Enums"]["incident_status"]
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          description?: string
+          driver_id?: string | null
+          id?: string
+          incident_type?: Database["public"]["Enums"]["incident_type"]
+          job_id?: string | null
+          location?: string | null
+          occurred_at?: string
+          photo_urls?: string[] | null
+          reported_by?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          severity?: Database["public"]["Enums"]["incident_severity"]
+          status?: Database["public"]["Enums"]["incident_status"]
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incidents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incidents_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incidents_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incidents_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_events: {
+        Row: {
+          actor_id: string | null
+          company_id: string
+          created_at: string
+          event_type: string
+          id: string
+          job_id: string
+          message: string | null
+          metadata: Json | null
+        }
+        Insert: {
+          actor_id?: string | null
+          company_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          job_id: string
+          message?: string | null
+          metadata?: Json | null
+        }
+        Update: {
+          actor_id?: string | null
+          company_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          job_id?: string
+          message?: string | null
+          metadata?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_events_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jobs: {
+        Row: {
+          accepted_at: string | null
+          arrived_at: string | null
+          company_id: string
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          description: string | null
+          driver_id: string | null
+          dropoff_location: string | null
+          failed_at: string | null
+          failure_reason: string | null
+          id: string
+          notes: string | null
+          pickup_location: string | null
+          priority: Database["public"]["Enums"]["job_priority"]
+          proof_lat: number | null
+          proof_lng: number | null
+          proof_notes: string | null
+          proof_photo_url: string | null
+          proof_recipient_name: string | null
+          proof_signature_url: string | null
+          reference: string
+          scheduled_at: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["job_status"]
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          arrived_at?: string | null
+          company_id: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string | null
+          driver_id?: string | null
+          dropoff_location?: string | null
+          failed_at?: string | null
+          failure_reason?: string | null
+          id?: string
+          notes?: string | null
+          pickup_location?: string | null
+          priority?: Database["public"]["Enums"]["job_priority"]
+          proof_lat?: number | null
+          proof_lng?: number | null
+          proof_notes?: string | null
+          proof_photo_url?: string | null
+          proof_recipient_name?: string | null
+          proof_signature_url?: string | null
+          reference: string
+          scheduled_at?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["job_status"]
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          arrived_at?: string | null
+          company_id?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string | null
+          driver_id?: string | null
+          dropoff_location?: string | null
+          failed_at?: string | null
+          failure_reason?: string | null
+          id?: string
+          notes?: string | null
+          pickup_location?: string | null
+          priority?: Database["public"]["Enums"]["job_priority"]
+          proof_lat?: number | null
+          proof_lng?: number | null
+          proof_notes?: string | null
+          proof_photo_url?: string | null
+          proof_recipient_name?: string | null
+          proof_signature_url?: string | null
+          reference?: string
+          scheduled_at?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["job_status"]
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      maintenance: {
+        Row: {
+          company_id: string
+          completed_at: string | null
+          cost: number | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_odometer: number | null
+          id: string
+          invoice_url: string | null
+          maintenance_type: Database["public"]["Enums"]["maintenance_type"]
+          notes: string | null
+          scheduled_date: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["maintenance_status"]
+          title: string
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          company_id: string
+          completed_at?: string | null
+          cost?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_odometer?: number | null
+          id?: string
+          invoice_url?: string | null
+          maintenance_type?: Database["public"]["Enums"]["maintenance_type"]
+          notes?: string | null
+          scheduled_date?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["maintenance_status"]
+          title: string
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          company_id?: string
+          completed_at?: string | null
+          cost?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_odometer?: number | null
+          id?: string
+          invoice_url?: string | null
+          maintenance_type?: Database["public"]["Enums"]["maintenance_type"]
+          notes?: string | null
+          scheduled_date?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["maintenance_status"]
+          title?: string
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          body: string | null
+          company_id: string
+          created_at: string
+          id: string
+          link_path: string | null
+          notification_type: Database["public"]["Enums"]["notification_type"]
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          link_path?: string | null
+          notification_type: Database["public"]["Enums"]["notification_type"]
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          link_path?: string | null
+          notification_type?: Database["public"]["Enums"]["notification_type"]
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          active_company_id: string | null
+          avatar_url: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          active_company_id?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active_company_id?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicles: {
+        Row: {
+          assigned_driver_id: string | null
+          company_id: string
+          created_at: string
+          id: string
+          insurance_expiry: string | null
+          licence_expiry: string | null
+          make: string | null
+          model: string | null
+          notes: string | null
+          odometer: number | null
+          registration: string
+          status: Database["public"]["Enums"]["vehicle_status"]
+          updated_at: string
+          vehicle_type: Database["public"]["Enums"]["vehicle_type"]
+          vin: string | null
+          year: number | null
+        }
+        Insert: {
+          assigned_driver_id?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          insurance_expiry?: string | null
+          licence_expiry?: string | null
+          make?: string | null
+          model?: string | null
+          notes?: string | null
+          odometer?: number | null
+          registration: string
+          status?: Database["public"]["Enums"]["vehicle_status"]
+          updated_at?: string
+          vehicle_type?: Database["public"]["Enums"]["vehicle_type"]
+          vin?: string | null
+          year?: number | null
+        }
+        Update: {
+          assigned_driver_id?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          insurance_expiry?: string | null
+          licence_expiry?: string | null
+          make?: string | null
+          model?: string | null
+          notes?: string | null
+          odometer?: number | null
+          registration?: string
+          status?: Database["public"]["Enums"]["vehicle_status"]
+          updated_at?: string
+          vehicle_type?: Database["public"]["Enums"]["vehicle_type"]
+          vin?: string | null
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicles_assigned_driver_id_fkey"
+            columns: ["assigned_driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_any_role: {
+        Args: {
+          _company_id: string
+          _roles: Database["public"]["Enums"]["app_role"][]
+        }
+        Returns: boolean
+      }
+      has_role: {
+        Args: {
+          _company_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: boolean
+      }
+      is_company_member: { Args: { _company_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "fleet_manager" | "dispatcher" | "driver" | "viewer"
+      business_type:
+        | "logistics"
+        | "trucking"
+        | "courier"
+        | "food_delivery"
+        | "last_mile"
+        | "fuel_petroleum"
+        | "passenger_transport"
+        | "other"
+      document_owner_type: "company" | "vehicle" | "driver"
+      driver_status: "available" | "on_trip" | "off_duty" | "suspended"
+      fleet_size: "1-5" | "6-20" | "21-50" | "51-100" | "100+"
+      incident_severity: "low" | "medium" | "high" | "critical"
+      incident_status: "open" | "investigating" | "resolved"
+      incident_type:
+        | "accident"
+        | "breakdown"
+        | "vehicle_damage"
+        | "delivery_issue"
+        | "driver_issue"
+        | "customer_issue"
+        | "safety_issue"
+        | "other"
+      job_priority: "low" | "normal" | "high" | "critical"
+      job_status:
+        | "unassigned"
+        | "assigned"
+        | "accepted"
+        | "in_progress"
+        | "arrived"
+        | "completed"
+        | "failed"
+        | "cancelled"
+      maintenance_status: "reported" | "scheduled" | "in_progress" | "completed"
+      maintenance_type:
+        | "service"
+        | "repair"
+        | "inspection"
+        | "tyres"
+        | "brakes"
+        | "engine"
+        | "electrical"
+        | "other"
+      notification_type:
+        | "job_assigned"
+        | "job_accepted"
+        | "job_started"
+        | "job_delayed"
+        | "job_completed"
+        | "job_failed"
+        | "incident_reported"
+        | "incident_critical"
+        | "maintenance_overdue"
+        | "document_expiring"
+        | "document_expired"
+      terminology: "trips" | "jobs" | "deliveries" | "loads" | "orders"
+      vehicle_status: "available" | "in_use" | "maintenance" | "out_of_service"
+      vehicle_type:
+        | "truck"
+        | "van"
+        | "car"
+        | "motorcycle"
+        | "bus"
+        | "tanker"
+        | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +983,79 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "fleet_manager", "dispatcher", "driver", "viewer"],
+      business_type: [
+        "logistics",
+        "trucking",
+        "courier",
+        "food_delivery",
+        "last_mile",
+        "fuel_petroleum",
+        "passenger_transport",
+        "other",
+      ],
+      document_owner_type: ["company", "vehicle", "driver"],
+      driver_status: ["available", "on_trip", "off_duty", "suspended"],
+      fleet_size: ["1-5", "6-20", "21-50", "51-100", "100+"],
+      incident_severity: ["low", "medium", "high", "critical"],
+      incident_status: ["open", "investigating", "resolved"],
+      incident_type: [
+        "accident",
+        "breakdown",
+        "vehicle_damage",
+        "delivery_issue",
+        "driver_issue",
+        "customer_issue",
+        "safety_issue",
+        "other",
+      ],
+      job_priority: ["low", "normal", "high", "critical"],
+      job_status: [
+        "unassigned",
+        "assigned",
+        "accepted",
+        "in_progress",
+        "arrived",
+        "completed",
+        "failed",
+        "cancelled",
+      ],
+      maintenance_status: ["reported", "scheduled", "in_progress", "completed"],
+      maintenance_type: [
+        "service",
+        "repair",
+        "inspection",
+        "tyres",
+        "brakes",
+        "engine",
+        "electrical",
+        "other",
+      ],
+      notification_type: [
+        "job_assigned",
+        "job_accepted",
+        "job_started",
+        "job_delayed",
+        "job_completed",
+        "job_failed",
+        "incident_reported",
+        "incident_critical",
+        "maintenance_overdue",
+        "document_expiring",
+        "document_expired",
+      ],
+      terminology: ["trips", "jobs", "deliveries", "loads", "orders"],
+      vehicle_status: ["available", "in_use", "maintenance", "out_of_service"],
+      vehicle_type: [
+        "truck",
+        "van",
+        "car",
+        "motorcycle",
+        "bus",
+        "tanker",
+        "other",
+      ],
+    },
   },
 } as const
