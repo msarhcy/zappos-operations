@@ -5,6 +5,7 @@ import { useJobs } from "@/hooks/use-jobs";
 import { useVehicles } from "@/hooks/use-vehicles";
 import { useDrivers } from "@/hooks/use-drivers";
 import { Card } from "@/components/ui/card";
+import { ErrorState, LoadingState } from "@/components/operational-state";
 import {
   AlertTriangle,
   Clock,
@@ -50,9 +51,19 @@ function DashboardPage() {
   const [expiredDocs, setExpiredDocs] = useState(0);
   const [failedJobs, setFailedJobs] = useState(0);
 
-  const { jobs } = useJobs();
-  const { vehicles } = useVehicles();
-  const { drivers } = useDrivers();
+  const { jobs, loading: jobsLoading, error: jobsError, fetch: fetchJobs } = useJobs();
+  const {
+    vehicles,
+    loading: vehiclesLoading,
+    error: vehiclesError,
+    fetch: fetchVehicles,
+  } = useVehicles();
+  const {
+    drivers,
+    loading: driversLoading,
+    error: driversError,
+    fetch: fetchDrivers,
+  } = useDrivers();
 
   // Calculate metrics
   const activeJobsCount = jobs.filter((j) =>
@@ -131,6 +142,31 @@ function DashboardPage() {
     attentionItems.push(
       `${assignedProblemDriversCount} active ${terminology.plural} have suspended or off-duty drivers`,
     );
+
+  if (jobsLoading || vehiclesLoading || driversLoading) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
+        <LoadingState label="Loading dashboard" />
+      </div>
+    );
+  }
+
+  const loadError = jobsError || vehiclesError || driversError;
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
+        <ErrorState
+          title="Could not load dashboard"
+          description={loadError}
+          onAction={() => {
+            void fetchJobs();
+            void fetchVehicles();
+            void fetchDrivers();
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8">

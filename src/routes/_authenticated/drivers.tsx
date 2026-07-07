@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Loader2, Plus, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Users } from "lucide-react";
 import { useDrivers } from "@/hooks/use-drivers";
 import { useVehicles } from "@/hooks/use-vehicles";
 import { useCompany } from "@/lib/company-context";
@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/ui/status-badge-detailed";
+import { EmptyState, ErrorState, LoadingState } from "@/components/operational-state";
 import {
   Dialog,
   DialogContent,
@@ -47,9 +48,11 @@ function DriversPage() {
   const {
     drivers,
     loading,
+    error,
     create,
     update,
     delete: deleteDriver,
+    fetch,
   } = useDrivers({
     status: statusFilter,
     searchTerm,
@@ -148,91 +151,156 @@ function DriversPage() {
       {/* Table */}
       <Card className="overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
+          <LoadingState label="Loading drivers" />
+        ) : error ? (
+          <ErrorState
+            title="Could not load drivers"
+            description={error}
+            onAction={() => void fetch()}
+          />
         ) : drivers.length === 0 ? (
-          <div className="py-12 text-center">
-            <p className="text-sm text-muted-foreground">No drivers found</p>
-          </div>
+          <EmptyState
+            title="No drivers found"
+            description="Drivers you add to this company will appear here."
+            actionLabel={canEdit ? "Add driver" : undefined}
+            onAction={canEdit ? handleCreateClick : undefined}
+            icon={Users}
+          />
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Licence number</TableHead>
-                  <TableHead>Licence expiry</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-20">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {drivers.map((d) => {
-                  const licenceExpired =
-                    d.licence_expiry && new Date(d.licence_expiry) < new Date();
-                  return (
-                    <TableRow
-                      key={d.id}
-                      className="cursor-pointer"
-                      onClick={() => setProfileDriver(d)}
-                    >
-                      <TableCell className="font-medium">{d.full_name}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {d.phone || "—"}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {d.licence_number || "—"}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {d.licence_expiry ? (
-                          <span className={licenceExpired ? "text-status-error" : ""}>
-                            {new Date(d.licence_expiry).toLocaleDateString()}
-                          </span>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={d.status} variant="small" />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {canEdit && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                handleEditClick(d);
-                              }}
-                              className="h-7 w-7 p-0"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
+          <>
+            <div className="space-y-3 p-3 md:hidden">
+              {drivers.map((d) => {
+                const licenceExpired = d.licence_expiry && new Date(d.licence_expiry) < new Date();
+                return (
+                  <Card key={d.id} className="p-4" onClick={() => setProfileDriver(d)}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold">{d.full_name}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{d.phone || "-"}</p>
+                      </div>
+                      <StatusBadge status={d.status} variant="small" />
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <p className="text-muted-foreground">Licence</p>
+                        <p className="mt-1 truncate">{d.licence_number || "-"}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Expiry</p>
+                        <p className={licenceExpired ? "mt-1 text-status-error" : "mt-1"}>
+                          {d.licence_expiry || "-"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      {canEdit ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleEditClick(d);
+                          }}
+                        >
+                          Edit
+                        </Button>
+                      ) : null}
+                      {canDelete ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:bg-destructive/10"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleDeleteClick(d);
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      ) : null}
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Licence number</TableHead>
+                    <TableHead>Licence expiry</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-20">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {drivers.map((d) => {
+                    const licenceExpired =
+                      d.licence_expiry && new Date(d.licence_expiry) < new Date();
+                    return (
+                      <TableRow
+                        key={d.id}
+                        className="cursor-pointer"
+                        onClick={() => setProfileDriver(d)}
+                      >
+                        <TableCell className="font-medium">{d.full_name}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {d.phone || "—"}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {d.licence_number || "—"}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {d.licence_expiry ? (
+                            <span className={licenceExpired ? "text-status-error" : ""}>
+                              {new Date(d.licence_expiry).toLocaleDateString()}
+                            </span>
+                          ) : (
+                            "—"
                           )}
-                          {canDelete && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                handleDeleteClick(d);
-                              }}
-                              className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge status={d.status} variant="small" />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {canEdit && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleEditClick(d);
+                                }}
+                                className="h-7 w-7 p-0"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                            {canDelete && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleDeleteClick(d);
+                                }}
+                                className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </Card>
 

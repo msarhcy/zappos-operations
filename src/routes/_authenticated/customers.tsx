@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Loader2, Plus, Pencil, Trash2, Search } from "lucide-react";
+import { Building2, Plus, Pencil, Trash2, Search } from "lucide-react";
 import { useCustomers } from "@/hooks/use-customers";
 import { useCompany } from "@/lib/company-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { EmptyState, ErrorState, LoadingState } from "@/components/operational-state";
 import {
   Table,
   TableBody,
@@ -43,9 +44,11 @@ function CustomersPage() {
   const {
     customers,
     loading,
+    error,
     create,
     update,
     delete: deleteCustomer,
+    fetch,
   } = useCustomers({
     searchTerm,
   });
@@ -131,77 +134,135 @@ function CustomersPage() {
       {/* Table */}
       <Card className="overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
+          <LoadingState label="Loading customers" />
+        ) : error ? (
+          <ErrorState
+            title="Could not load customers"
+            description={error}
+            onAction={() => void fetch()}
+          />
         ) : customers.length === 0 ? (
-          <div className="py-12 text-center">
-            <p className="text-sm text-muted-foreground">No customers found</p>
-          </div>
+          <EmptyState
+            title="No customers found"
+            description="Customers you add to this company will appear here."
+            actionLabel={canEdit ? "Add customer" : undefined}
+            onAction={canEdit ? handleCreateClick : undefined}
+            icon={Building2}
+          />
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Contact person</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead className="w-20">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {customers.map((c) => (
-                  <TableRow
-                    key={c.id}
-                    className="cursor-pointer"
-                    onClick={() => setProfileCustomer(c)}
-                  >
-                    <TableCell className="font-medium">{c.name}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {c.contact_person || "—"}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {c.phone || "—"}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {c.email || "—"}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {canEdit && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleEditClick(c);
-                            }}
-                            className="h-7 w-7 p-0"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                        {canDelete && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleDeleteClick(c);
-                            }}
-                            className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
+          <>
+            <div className="space-y-3 p-3 md:hidden">
+              {customers.map((c) => (
+                <Card key={c.id} className="p-4" onClick={() => setProfileCustomer(c)}>
+                  <p className="truncate text-sm font-semibold">{c.name}</p>
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <p className="text-muted-foreground">Contact</p>
+                      <p className="mt-1 truncate">{c.contact_person || "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Phone</p>
+                      <p className="mt-1 truncate">{c.phone || "-"}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-muted-foreground">Email</p>
+                      <p className="mt-1 truncate">{c.email || "-"}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    {canEdit ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleEditClick(c);
+                        }}
+                      >
+                        Edit
+                      </Button>
+                    ) : null}
+                    {canDelete ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:bg-destructive/10"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleDeleteClick(c);
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    ) : null}
+                  </div>
+                </Card>
+              ))}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Company</TableHead>
+                    <TableHead>Contact person</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead className="w-20">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {customers.map((c) => (
+                    <TableRow
+                      key={c.id}
+                      className="cursor-pointer"
+                      onClick={() => setProfileCustomer(c)}
+                    >
+                      <TableCell className="font-medium">{c.name}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {c.contact_person || "—"}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {c.phone || "—"}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {c.email || "—"}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {canEdit && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleEditClick(c);
+                              }}
+                              className="h-7 w-7 p-0"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          {canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleDeleteClick(c);
+                              }}
+                              className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </Card>
 

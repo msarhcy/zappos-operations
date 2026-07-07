@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Loader2, Plus, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Truck } from "lucide-react";
 import { useVehicles } from "@/hooks/use-vehicles";
 import { useDrivers } from "@/hooks/use-drivers";
 import { useCompany } from "@/lib/company-context";
@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/ui/status-badge-detailed";
+import { EmptyState, ErrorState, LoadingState } from "@/components/operational-state";
 import {
   Dialog,
   DialogContent,
@@ -47,9 +48,11 @@ function VehiclesPage() {
   const {
     vehicles,
     loading,
+    error,
     create,
     update,
     delete: deleteVehicle,
+    fetch,
   } = useVehicles({
     status: statusFilter,
     searchTerm,
@@ -148,83 +151,151 @@ function VehiclesPage() {
       {/* Table */}
       <Card className="overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
+          <LoadingState label="Loading vehicles" />
+        ) : error ? (
+          <ErrorState
+            title="Could not load vehicles"
+            description={error}
+            onAction={() => void fetch()}
+          />
         ) : vehicles.length === 0 ? (
-          <div className="py-12 text-center">
-            <p className="text-sm text-muted-foreground">No vehicles found</p>
-          </div>
+          <EmptyState
+            title="No vehicles found"
+            description="Vehicles you add to this company will appear here."
+            actionLabel={canEdit ? "Add vehicle" : undefined}
+            onAction={canEdit ? handleCreateClick : undefined}
+            icon={Truck}
+          />
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Registration</TableHead>
-                  <TableHead>Vehicle</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Assigned Driver</TableHead>
-                  <TableHead className="w-20">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {vehicles.map((v) => (
-                  <TableRow
-                    key={v.id}
-                    className="cursor-pointer"
-                    onClick={() => setProfileVehicle(v)}
-                  >
-                    <TableCell className="font-medium">{v.registration}</TableCell>
-                    <TableCell>
-                      {v.year ? `${v.year} ` : ""}
-                      {v.make} {v.model}
-                    </TableCell>
-                    <TableCell className="capitalize">{v.vehicle_type}</TableCell>
-                    <TableCell>
-                      <StatusBadge status={v.status} variant="small" />
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {v.assigned_driver_id
-                        ? drivers.find((driver) => driver.id === v.assigned_driver_id)?.full_name ||
-                          "Assigned"
-                        : "Unassigned"}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {canEdit && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleEditClick(v);
-                            }}
-                            className="h-7 w-7 p-0"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                        {canDelete && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleDeleteClick(v);
-                            }}
-                            className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
+          <>
+            <div className="space-y-3 p-3 md:hidden">
+              {vehicles.map((v) => (
+                <Card key={v.id} className="p-4" onClick={() => setProfileVehicle(v)}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">{v.registration}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {v.year ? `${v.year} ` : ""}
+                        {v.make || "-"} {v.model || ""}
+                      </p>
+                    </div>
+                    <StatusBadge status={v.status} variant="small" />
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <p className="text-muted-foreground">Type</p>
+                      <p className="mt-1 capitalize">{v.vehicle_type}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Driver</p>
+                      <p className="mt-1 truncate">
+                        {v.assigned_driver_id
+                          ? drivers.find((driver) => driver.id === v.assigned_driver_id)
+                              ?.full_name || "Assigned"
+                          : "Unassigned"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    {canEdit ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleEditClick(v);
+                        }}
+                      >
+                        Edit
+                      </Button>
+                    ) : null}
+                    {canDelete ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:bg-destructive/10"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleDeleteClick(v);
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    ) : null}
+                  </div>
+                </Card>
+              ))}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Registration</TableHead>
+                    <TableHead>Vehicle</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Assigned Driver</TableHead>
+                    <TableHead className="w-20">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {vehicles.map((v) => (
+                    <TableRow
+                      key={v.id}
+                      className="cursor-pointer"
+                      onClick={() => setProfileVehicle(v)}
+                    >
+                      <TableCell className="font-medium">{v.registration}</TableCell>
+                      <TableCell>
+                        {v.year ? `${v.year} ` : ""}
+                        {v.make} {v.model}
+                      </TableCell>
+                      <TableCell className="capitalize">{v.vehicle_type}</TableCell>
+                      <TableCell>
+                        <StatusBadge status={v.status} variant="small" />
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {v.assigned_driver_id
+                          ? drivers.find((driver) => driver.id === v.assigned_driver_id)
+                              ?.full_name || "Assigned"
+                          : "Unassigned"}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {canEdit && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleEditClick(v);
+                              }}
+                              className="h-7 w-7 p-0"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          {canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleDeleteClick(v);
+                              }}
+                              className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </Card>
 

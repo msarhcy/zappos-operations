@@ -1,6 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { FileText, Loader2, Pencil, Plus, Search, Trash2, Upload } from "lucide-react";
+import {
+  Download,
+  ExternalLink,
+  FileText,
+  Loader2,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompany } from "@/lib/company-context";
 import { useDrivers } from "@/hooks/use-drivers";
@@ -12,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StatusBadge } from "@/components/ui/status-badge-detailed";
 import { Textarea } from "@/components/ui/textarea";
+import { EmptyState, ErrorState, LoadingState } from "@/components/operational-state";
 import type { Database } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 
@@ -47,6 +58,8 @@ function DocumentsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<DocumentRow | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [signingAction, setSigningAction] = useState<string | null>(null);
 
   const canEdit = hasRole("admin") || hasRole("fleet_manager");
   const canDelete = hasRole("admin");
@@ -55,17 +68,23 @@ function DocumentsPage() {
   const load = async () => {
     if (!activeCompany) {
       setDocuments([]);
+      setLoadError(null);
       setLoading(false);
       return;
     }
     setLoading(true);
+    setLoadError(null);
     const { data, error } = await supabase
       .from("documents")
       .select("*")
       .eq("company_id", activeCompany.id)
       .order("expiry_date", { ascending: true, nullsFirst: false });
-    if (error) toast.error(error.message);
-    setDocuments(data || []);
+    if (error) {
+      setDocuments([]);
+      setLoadError(error.message);
+    } else {
+      setDocuments(data || []);
+    }
     setLoading(false);
   };
 
@@ -113,6 +132,46 @@ function DocumentsPage() {
     await load();
   };
 
+  const createSignedFileUrl = async (document: DocumentRow) => {
+    if (!activeCompany) throw new Error("No active company");
+    if (!document.file_url) throw new Error("Missing file");
+
+    const [companySegment] = document.file_url.split("/");
+    if (companySegment !== activeCompany.id) {
+      throw new Error("This file does not belong to the active company");
+    }
+
+    const { data, error } = await supabase.storage
+      .from("documents")
+      .createSignedUrl(document.file_url, 60);
+    if (error) throw error;
+    if (!data?.signedUrl) throw new Error("Could not create a secure file link");
+    return data.signedUrl;
+  };
+
+  const openSignedFile = async (document: DocumentRow, mode: "view" | "download") => {
+    const actionKey = `${mode}:${document.id}`;
+    setSigningAction(actionKey);
+    try {
+      const signedUrl = await createSignedFileUrl(document);
+      if (mode === "view") {
+        window.open(signedUrl, "_blank", "noopener,noreferrer");
+      } else {
+        const anchor = window.document.createElement("a");
+        anchor.href = signedUrl;
+        anchor.download = document.file_url?.split("/").pop() || document.name;
+        anchor.rel = "noopener noreferrer";
+        window.document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "File action failed");
+    } finally {
+      setSigningAction(null);
+    }
+  };
+
   const save = async (formData: DocumentFormData) => {
     if (!activeCompany) return;
     setSubmitting(true);
@@ -124,7 +183,7 @@ function DocumentsPage() {
         const { error: uploadError } = await supabase.storage
           .from("documents")
           .upload(path, formData.file, { upsert: false });
-        if (uploadError) throw uploadError;
+        if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
         fileUrl = path;
       }
 
@@ -190,14 +249,21 @@ function DocumentsPage() {
       </div>
 
       {loading ? (
-        <div className="grid min-h-64 place-items-center">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
+        <LoadingState label="Loading documents" />
+      ) : loadError ? (
+        <ErrorState
+          title="Could not load documents"
+          description={loadError}
+          onAction={() => void load()}
+        />
       ) : filtered.length === 0 ? (
-        <Card className="grid place-items-center p-10 text-center">
-          <FileText className="mb-2 h-7 w-7 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">No documents found</p>
-        </Card>
+        <EmptyState
+          title="No documents found"
+          description="Company, vehicle and driver documents will appear here."
+          actionLabel={canEdit ? "Add document" : undefined}
+          onAction={canEdit ? openCreate : undefined}
+          icon={FileText}
+        />
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((document) => {
@@ -228,11 +294,36 @@ function DocumentsPage() {
                     {document.notes}
                   </p>
                 ) : null}
-                <div className="mt-4 flex items-center justify-between gap-2">
-                  <span className="truncate text-xs text-muted-foreground">
-                    {document.file_url ? document.file_url.split("/").pop() : "No file uploaded"}
-                  </span>
-                  <div className="flex shrink-0 gap-1">
+                <div className="mt-4 space-y-3">
+                  {document.file_url ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => void openSignedFile(document, "view")}
+                        disabled={signingAction === `view:${document.id}`}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        View
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => void openSignedFile(document, "download")}
+                        disabled={signingAction === `download:${document.id}`}
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        Download
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
+                      Missing file
+                    </div>
+                  )}
+                  <div className="flex justify-end gap-1">
                     {canEdit ? (
                       <Button
                         variant="ghost"

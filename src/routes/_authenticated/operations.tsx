@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { History, Loader2, Plus, Pencil, Trash2, Search } from "lucide-react";
+import { ClipboardList, History, Plus, Pencil, Trash2, Search } from "lucide-react";
 import { useJobs } from "@/hooks/use-jobs";
 import { useCustomers } from "@/hooks/use-customers";
 import { useDrivers } from "@/hooks/use-drivers";
@@ -9,6 +9,7 @@ import { useCompany } from "@/lib/company-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { EmptyState, ErrorState, LoadingState } from "@/components/operational-state";
 import {
   Table,
   TableBody,
@@ -53,10 +54,12 @@ function OperationsPage() {
   const {
     jobs,
     loading,
+    error,
     create,
     update,
     delete: deleteJob,
     fetchEvents,
+    fetch,
   } = useJobs({
     status: statusFilter,
     priority: priorityFilter,
@@ -199,81 +202,146 @@ function OperationsPage() {
       {/* Table */}
       <Card className="overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
+          <LoadingState label={`Loading ${terminology.plural}`} />
+        ) : error ? (
+          <ErrorState
+            title={`Could not load ${terminology.plural}`}
+            description={error}
+            onAction={() => void fetch()}
+          />
         ) : jobs.length === 0 ? (
-          <div className="py-12 text-center">
-            <p className="text-sm text-muted-foreground">No {terminology.plural} found</p>
-          </div>
+          <EmptyState
+            title={`No ${terminology.plural} found`}
+            description={`${terminology.Plural} you create for this company will appear here.`}
+            actionLabel={canEdit ? `New ${terminology.singular}` : undefined}
+            onAction={canEdit ? handleCreateClick : undefined}
+            icon={ClipboardList}
+          />
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Reference</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Pickup / Dropoff</TableHead>
-                  <TableHead>Driver / Vehicle</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-20">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {jobs.map((j) => (
-                  <TableRow key={j.id} className="cursor-pointer" onClick={() => setProfileJob(j)}>
-                    <TableCell className="font-medium text-xs">{j.reference}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {getCustomerName(j.customer_id)}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground max-w-xs truncate">
-                      {j.pickup_location} → {j.dropoff_location}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {getDriverName(j.driver_id)} / {getVehicleReg(j.vehicle_id)}
-                    </TableCell>
-                    <TableCell>
+          <>
+            <div className="space-y-3 p-3 md:hidden">
+              {jobs.map((j) => (
+                <Card key={j.id} className="p-4" onClick={() => setProfileJob(j)}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">{j.reference}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {getCustomerName(j.customer_id)}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
                       <StatusBadge status={j.priority} variant="small" />
-                    </TableCell>
-                    <TableCell>
                       <StatusBadge status={j.status} variant="small" />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {canEdit && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleEditClick(j);
-                            }}
-                            className="h-7 w-7 p-0"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                        {canDelete && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleDeleteClick(j);
-                            }}
-                            className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
+                    </div>
+                  </div>
+                  <p className="mt-3 truncate text-xs text-muted-foreground">
+                    {j.pickup_location || "-"} {"->"} {j.dropoff_location || "-"}
+                  </p>
+                  <p className="mt-2 truncate text-xs text-muted-foreground">
+                    {getDriverName(j.driver_id)} / {getVehicleReg(j.vehicle_id)}
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    {canEdit ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleEditClick(j);
+                        }}
+                      >
+                        Edit
+                      </Button>
+                    ) : null}
+                    {canDelete ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:bg-destructive/10"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleDeleteClick(j);
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    ) : null}
+                  </div>
+                </Card>
+              ))}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Reference</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Pickup / Dropoff</TableHead>
+                    <TableHead>Driver / Vehicle</TableHead>
+                    <TableHead>Priority</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-20">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {jobs.map((j) => (
+                    <TableRow
+                      key={j.id}
+                      className="cursor-pointer"
+                      onClick={() => setProfileJob(j)}
+                    >
+                      <TableCell className="font-medium text-xs">{j.reference}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {getCustomerName(j.customer_id)}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground max-w-xs truncate">
+                        {j.pickup_location} → {j.dropoff_location}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {getDriverName(j.driver_id)} / {getVehicleReg(j.vehicle_id)}
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge status={j.priority} variant="small" />
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge status={j.status} variant="small" />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {canEdit && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleEditClick(j);
+                              }}
+                              className="h-7 w-7 p-0"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          {canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleDeleteClick(j);
+                              }}
+                              className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </Card>
 

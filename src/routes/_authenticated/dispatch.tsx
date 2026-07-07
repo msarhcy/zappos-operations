@@ -9,6 +9,7 @@ import { useCompany } from "@/lib/company-context";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge-detailed";
+import { EmptyState, ErrorState, LoadingState } from "@/components/operational-state";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/dispatch")({
@@ -22,10 +23,20 @@ function DispatchPage() {
   const [selectedDrivers, setSelectedDrivers] = useState<Record<string, string>>({});
   const [selectedVehicles, setSelectedVehicles] = useState<Record<string, string>>({});
 
-  const { jobs, assign, loading: jobsLoading } = useJobs();
+  const { jobs, assign, loading: jobsLoading, error: jobsError, fetch: fetchJobs } = useJobs();
   const { customers } = useCustomers();
-  const { drivers, loading: driversLoading } = useDrivers();
-  const { vehicles, loading: vehiclesLoading } = useVehicles();
+  const {
+    drivers,
+    loading: driversLoading,
+    error: driversError,
+    fetch: fetchDrivers,
+  } = useDrivers();
+  const {
+    vehicles,
+    loading: vehiclesLoading,
+    error: vehiclesError,
+    fetch: fetchVehicles,
+  } = useVehicles();
 
   const canDispatch = hasRole("admin") || hasRole("dispatcher");
   const canOverride = hasRole("admin");
@@ -65,8 +76,36 @@ function DispatchPage() {
 
   if (jobsLoading || driversLoading || vehiclesLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
+        <LoadingState label="Loading dispatch workspace" />
+      </div>
+    );
+  }
+
+  const loadError = jobsError || driversError || vehiclesError;
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
+        <ErrorState
+          title="Could not load dispatch workspace"
+          description={loadError}
+          onAction={() => {
+            void fetchJobs();
+            void fetchDrivers();
+            void fetchVehicles();
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (!canDispatch) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
+        <ErrorState
+          title="Dispatch is restricted"
+          description="Your current role can read operational data but cannot assign resources."
+        />
       </div>
     );
   }
@@ -129,12 +168,11 @@ function DispatchPage() {
         <div className="space-y-4">
           <h2 className="text-lg font-semibold">Unassigned {terminology.plural}</h2>
           {unassignedJobs.length === 0 ? (
-            <Card className="p-8 text-center">
-              <CheckCircle className="mx-auto h-6 w-6 text-status-success" />
-              <p className="mt-2 text-sm text-muted-foreground">
-                All {terminology.plural} assigned!
-              </p>
-            </Card>
+            <EmptyState
+              title={`All ${terminology.plural} assigned`}
+              description={`New unassigned ${terminology.plural} will appear here.`}
+              icon={CheckCircle}
+            />
           ) : (
             <div className="space-y-3">
               {unassignedJobs.map((job) => (
@@ -153,12 +191,12 @@ function DispatchPage() {
                       {job.pickup_location} → {job.dropoff_location}
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
                     {availableDrivers.length > 0 && availableVehicles.length > 0 ? (
                       <>
                         <select
                           id={`driver-${job.id}`}
-                          className="flex-1 rounded border border-input bg-background px-2 py-1 text-xs"
+                          className="h-9 min-w-0 rounded border border-input bg-background px-2 py-1 text-xs"
                           value={selectedDrivers[job.id] || ""}
                           onChange={(event) =>
                             setSelectedDrivers((current) => ({
@@ -176,7 +214,7 @@ function DispatchPage() {
                         </select>
                         <select
                           id={`vehicle-${job.id}`}
-                          className="flex-1 rounded border border-input bg-background px-2 py-1 text-xs"
+                          className="h-9 min-w-0 rounded border border-input bg-background px-2 py-1 text-xs"
                           value={selectedVehicles[job.id] || ""}
                           onChange={(event) =>
                             setSelectedVehicles((current) => ({
@@ -233,10 +271,7 @@ function DispatchPage() {
               Active {terminology.plural} ({activeJobs.length})
             </h2>
             {activeJobs.length === 0 ? (
-              <Card className="p-6 text-center">
-                <CheckCircle className="mx-auto h-5 w-5 text-status-success" />
-                <p className="mt-2 text-xs text-muted-foreground">No active assignments</p>
-              </Card>
+              <EmptyState title="No active assignments" icon={CheckCircle} />
             ) : (
               <div className="max-h-64 space-y-2 overflow-y-auto">
                 {activeJobs.map((job) => (
@@ -262,10 +297,7 @@ function DispatchPage() {
               Available drivers ({availableDrivers.length})
             </h2>
             {availableDrivers.length === 0 ? (
-              <Card className="p-6 text-center">
-                <AlertCircle className="mx-auto h-5 w-5 text-muted-foreground" />
-                <p className="mt-2 text-xs text-muted-foreground">No available drivers</p>
-              </Card>
+              <EmptyState title="No available drivers" icon={AlertCircle} />
             ) : (
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {availableDrivers.map((d) => (
@@ -289,10 +321,7 @@ function DispatchPage() {
               Available vehicles ({availableVehicles.length})
             </h2>
             {availableVehicles.length === 0 ? (
-              <Card className="p-6 text-center">
-                <AlertCircle className="mx-auto h-5 w-5 text-muted-foreground" />
-                <p className="mt-2 text-xs text-muted-foreground">No available vehicles</p>
-              </Card>
+              <EmptyState title="No available vehicles" icon={AlertCircle} />
             ) : (
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {availableVehicles.map((v) => (
