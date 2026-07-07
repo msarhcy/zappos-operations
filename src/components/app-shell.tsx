@@ -85,11 +85,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const hasElevatedAccess = roles.some((role) =>
+    ["admin", "fleet_manager", "dispatcher"].includes(role),
+  );
+  const driverRestricted = roles.includes("driver") && !hasElevatedAccess;
 
   // Rename Operations label based on terminology
-  const navItems = filterFor(ALL, roles).map((i) =>
-    i.to === "/operations" ? { ...i, label: terminology.Plural } : i,
-  );
+  const navItems = filterFor(ALL, roles)
+    .filter((item) => !driverRestricted || ["/driver", "/notifications"].includes(item.to))
+    .map((i) => (i.to === "/operations" ? { ...i, label: terminology.Plural } : i));
   const mobileNav = navItems.filter((i) => i.mobile).slice(0, 5);
 
   const signOut = async () => {

@@ -121,32 +121,50 @@ export function useDriverWorkflow() {
     if (!activeCompany) throw new Error("No active company");
     let photoUrl: string | null = null;
     let signatureUrl: string | null = null;
+    const uploadedPaths: Array<{ bucket: string; path: string }> = [];
 
-    if (proof.photo) {
-      photoUrl = filePath(activeCompany.id, `jobs/${jobId}/photos`, proof.photo);
-      const { error: uploadError } = await supabase.storage
-        .from("proof-of-completion")
-        .upload(photoUrl, proof.photo, { upsert: false });
-      if (uploadError) throw uploadError;
+    try {
+      if (proof.photo) {
+        photoUrl = filePath(activeCompany.id, `jobs/${jobId}/photos`, proof.photo);
+        const { error: uploadError } = await supabase.storage
+          .from("proof-of-completion")
+          .upload(photoUrl, proof.photo, { upsert: false });
+        if (uploadError) throw uploadError;
+        uploadedPaths.push({ bucket: "proof-of-completion", path: photoUrl });
+      }
+
+      if (proof.signature) {
+        signatureUrl = filePath(activeCompany.id, `jobs/${jobId}/signatures`, proof.signature);
+        const { error: uploadError } = await supabase.storage
+          .from("proof-of-completion")
+          .upload(signatureUrl, proof.signature, {
+            upsert: false,
+            contentType: "image/png",
+          });
+        if (uploadError) throw uploadError;
+        uploadedPaths.push({ bucket: "proof-of-completion", path: signatureUrl });
+      }
+
+      const { error: err } = await supabase.rpc("submit_job_proof", {
+        _job_id: jobId,
+        _recipient_name: proof.recipientName,
+        _notes: proof.notes || null,
+        _photo_url: photoUrl,
+        _signature_url: signatureUrl,
+      });
+      if (err) throw err;
+      await fetch();
+    } catch (error) {
+      await Promise.all(
+        uploadedPaths.map(async ({ bucket, path }) => {
+          await supabase.storage
+            .from(bucket)
+            .remove([path])
+            .catch(() => undefined);
+        }),
+      );
+      throw error;
     }
-
-    if (proof.signature) {
-      signatureUrl = filePath(activeCompany.id, `jobs/${jobId}/signatures`, proof.signature);
-      const { error: uploadError } = await supabase.storage
-        .from("proof-of-completion")
-        .upload(signatureUrl, proof.signature, { upsert: false, contentType: "image/png" });
-      if (uploadError) throw uploadError;
-    }
-
-    const { error: err } = await supabase.rpc("submit_job_proof", {
-      _job_id: jobId,
-      _recipient_name: proof.recipientName,
-      _notes: proof.notes || null,
-      _photo_url: photoUrl,
-      _signature_url: signatureUrl,
-    });
-    if (err) throw err;
-    await fetch();
   };
 
   return {

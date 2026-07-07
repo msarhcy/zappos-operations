@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useSession } from "@/lib/session";
 import { CompanyProvider, useCompany } from "@/lib/company-context";
@@ -37,11 +37,29 @@ function AuthedLayout() {
 }
 
 function CompanyGate({ children }: { children: React.ReactNode }) {
-  const { loading, companies } = useCompany();
+  const { loading, companies, roles } = useCompany();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const hasElevatedAccess = roles.some((role) =>
+    ["admin", "fleet_manager", "dispatcher"].includes(role),
+  );
+  const driverRestricted = roles.includes("driver") && !hasElevatedAccess;
+
   useEffect(() => {
     if (!loading && companies.length === 0) navigate({ to: "/onboarding", replace: true });
   }, [loading, companies.length, navigate]);
+
+  useEffect(() => {
+    if (!loading && driverRestricted) {
+      const allowed = ["/driver", "/notifications"].some((prefix) =>
+        location.pathname.startsWith(prefix),
+      );
+      if (!allowed) {
+        navigate({ to: "/driver", replace: true });
+      }
+    }
+  }, [driverRestricted, loading, location.pathname, navigate]);
 
   if (loading) {
     return (

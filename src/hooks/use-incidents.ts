@@ -51,15 +51,22 @@ export function useIncidents() {
   const uploadPhotos = async (files: File[]) => {
     if (!activeCompany) throw new Error("No active company");
     const paths: string[] = [];
-    for (const file of files) {
-      const path = filePath(activeCompany.id, file);
-      const { error: uploadError } = await supabase.storage
-        .from("incident-photos")
-        .upload(path, file, { upsert: false });
-      if (uploadError) throw uploadError;
-      paths.push(path);
+    try {
+      for (const file of files) {
+        const path = filePath(activeCompany.id, file);
+        const { error: uploadError } = await supabase.storage
+          .from("incident-photos")
+          .upload(path, file, { upsert: false });
+        if (uploadError) throw uploadError;
+        paths.push(path);
+      }
+      return paths;
+    } catch (error) {
+      if (paths.length > 0) {
+        await supabase.storage.from("incident-photos").remove(paths);
+      }
+      throw error;
     }
-    return paths;
   };
 
   const create = async (
@@ -67,22 +74,34 @@ export function useIncidents() {
     photos: File[] = [],
   ) => {
     if (!activeCompany) throw new Error("No active company");
-    const photoUrls = photos.length > 0 ? await uploadPhotos(photos) : (data.photo_urls ?? null);
-    const { data: incident, error: err } = await supabase
-      .from("incidents")
-      .insert([
-        {
-          ...data,
-          company_id: activeCompany.id,
-          reported_by: user?.id ?? null,
-          photo_urls: photoUrls,
-        },
-      ])
-      .select()
-      .single();
-    if (err) throw err;
-    await fetch();
-    return incident;
+    const uploadedPaths: string[] = [];
+    try {
+      const photoUrls = photos.length > 0 ? await uploadPhotos(photos) : (data.photo_urls ?? null);
+      if (Array.isArray(photoUrls)) uploadedPaths.push(...photoUrls);
+      const { data: incident, error: err } = await supabase
+        .from("incidents")
+        .insert([
+          {
+            ...data,
+            company_id: activeCompany.id,
+            reported_by: user?.id ?? null,
+            photo_urls: photoUrls,
+          },
+        ])
+        .select()
+        .single();
+      if (err) throw err;
+      await fetch();
+      return incident;
+    } catch (error) {
+      if (uploadedPaths.length > 0) {
+        await supabase.storage
+          .from("incident-photos")
+          .remove(uploadedPaths)
+          .catch(() => undefined);
+      }
+      throw error;
+    }
   };
 
   const update = async (id: string, updates: Partial<Incident>) => {

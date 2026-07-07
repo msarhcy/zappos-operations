@@ -64,32 +64,56 @@ export function useMaintenance() {
     invoice?: File | null,
   ) => {
     if (!activeCompany) throw new Error("No active company");
-    const invoiceUrl = invoice ? await uploadInvoice(invoice) : data.invoice_url;
-    const { data: row, error: err } = await supabase
-      .from("maintenance")
-      .insert([
-        {
-          ...data,
-          company_id: activeCompany.id,
-          created_by: user?.id ?? null,
-          invoice_url: invoiceUrl ?? null,
-        },
-      ])
-      .select()
-      .single();
-    if (err) throw err;
-    await fetch();
-    return row;
+    const uploadedPaths: string[] = [];
+    try {
+      const invoiceUrl = invoice ? await uploadInvoice(invoice) : data.invoice_url;
+      if (invoice && invoiceUrl) uploadedPaths.push(invoiceUrl);
+      const { data: row, error: err } = await supabase
+        .from("maintenance")
+        .insert([
+          {
+            ...data,
+            company_id: activeCompany.id,
+            created_by: user?.id ?? null,
+            invoice_url: invoiceUrl ?? null,
+          },
+        ])
+        .select()
+        .single();
+      if (err) throw err;
+      await fetch();
+      return row;
+    } catch (error) {
+      if (uploadedPaths.length > 0) {
+        await supabase.storage
+          .from("maintenance-invoices")
+          .remove(uploadedPaths.filter(Boolean))
+          .catch(() => undefined);
+      }
+      throw error;
+    }
   };
 
   const update = async (id: string, updates: Partial<Maintenance>, invoice?: File | null) => {
-    const invoiceUrl = invoice ? await uploadInvoice(invoice) : updates.invoice_url;
-    const { error: err } = await supabase
-      .from("maintenance")
-      .update({ ...updates, invoice_url: invoiceUrl })
-      .eq("id", id);
-    if (err) throw err;
-    await fetch();
+    const uploadedPaths: string[] = [];
+    try {
+      const invoiceUrl = invoice ? await uploadInvoice(invoice) : updates.invoice_url;
+      if (invoice && invoiceUrl) uploadedPaths.push(invoiceUrl);
+      const { error: err } = await supabase
+        .from("maintenance")
+        .update({ ...updates, invoice_url: invoiceUrl })
+        .eq("id", id);
+      if (err) throw err;
+      await fetch();
+    } catch (error) {
+      if (uploadedPaths.length > 0) {
+        await supabase.storage
+          .from("maintenance-invoices")
+          .remove(uploadedPaths.filter(Boolean))
+          .catch(() => undefined);
+      }
+      throw error;
+    }
   };
 
   const delete_ = async (id: string) => {
