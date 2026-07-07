@@ -127,7 +127,7 @@ function TrackingPage() {
             .select("quality_status, quality_flags, server_received_at")
             .eq("company_id", activeCompanyId)
             .gte("server_received_at", today.toISOString()),
-          getTelemetryQueueStats(),
+          getTelemetryQueueStats().catch(() => ({ pending: 0, failed: 1, total: 0 })),
         ]);
 
         if (sessionsResult.error) throw sessionsResult.error;

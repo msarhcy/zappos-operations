@@ -21,14 +21,18 @@ export interface QualityResult {
   flags: string[];
 }
 
+function isFiniteNumber(value: number | null): value is number {
+  return value !== null && Number.isFinite(value);
+}
+
 export function validateTelemetryQuality(input: QualityInput): QualityResult {
   const flags: string[] = [];
   const { current, previous } = input;
   let status: QualityStatus = "high";
 
   if (
-    current.latitude === null ||
-    current.longitude === null ||
+    !isFiniteNumber(current.latitude) ||
+    !isFiniteNumber(current.longitude) ||
     current.latitude < -90 ||
     current.latitude > 90 ||
     current.longitude < -180 ||
@@ -38,7 +42,12 @@ export function validateTelemetryQuality(input: QualityInput): QualityResult {
     status = "rejected";
   }
 
-  if (current.horizontal_accuracy !== null && current.horizontal_accuracy > 100) {
+  if (
+    current.horizontal_accuracy !== null &&
+    (!Number.isFinite(current.horizontal_accuracy) ||
+      current.horizontal_accuracy < 0 ||
+      current.horizontal_accuracy > 100)
+  ) {
     flags.push(QUALITY_FLAGS.POOR_ACCURACY);
     if (status !== "rejected") status = "poor";
   } else if (
@@ -49,7 +58,12 @@ export function validateTelemetryQuality(input: QualityInput): QualityResult {
     status = "acceptable";
   }
 
-  if (current.device_speed !== null && (current.device_speed < 0 || current.device_speed > 60)) {
+  if (
+    current.device_speed !== null &&
+    (!Number.isFinite(current.device_speed) ||
+      current.device_speed < 0 ||
+      current.device_speed > 60)
+  ) {
     flags.push(QUALITY_FLAGS.SUSPICIOUS_SPEED);
     if (status !== "rejected") status = "poor";
   }
@@ -64,10 +78,10 @@ export function validateTelemetryQuality(input: QualityInput): QualityResult {
 
     if (
       status !== "rejected" &&
-      current.latitude !== null &&
-      current.longitude !== null &&
-      previous.latitude !== null &&
-      previous.longitude !== null &&
+      isFiniteNumber(current.latitude) &&
+      isFiniteNumber(current.longitude) &&
+      isFiniteNumber(previous.latitude) &&
+      isFiniteNumber(previous.longitude) &&
       currentMs > previousMs
     ) {
       const speed =
@@ -101,5 +115,5 @@ export function shouldApplyLatestLocation(
 ) {
   if (incomingStatus === "rejected") return false;
   if (!existingDeviceTimestamp) return true;
-  return Date.parse(incomingDeviceTimestamp) >= Date.parse(existingDeviceTimestamp);
+  return Date.parse(incomingDeviceTimestamp) > Date.parse(existingDeviceTimestamp);
 }

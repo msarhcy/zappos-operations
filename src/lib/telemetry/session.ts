@@ -55,9 +55,15 @@ export function useDriverTripTracking({ driver, currentJob }: UseDriverTripTrack
     ["in_progress", "arrived"].includes(currentJob?.status ?? "");
 
   const refreshQueueStats = useCallback(async () => {
-    const stats = await getTelemetryQueueStats();
-    setQueuePending(stats.pending);
-    setQueueFailed(stats.failed);
+    try {
+      const stats = await getTelemetryQueueStats();
+      setQueuePending(stats.pending);
+      setQueueFailed(stats.failed);
+    } catch (error) {
+      setQueuePending(0);
+      setQueueFailed(1);
+      setLastError(error instanceof Error ? error.message : "Local telemetry queue unavailable");
+    }
   }, []);
 
   const refreshSession = useCallback(async () => {

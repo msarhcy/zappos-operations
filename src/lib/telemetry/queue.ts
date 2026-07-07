@@ -3,6 +3,30 @@ import type { QueuedTelemetryPoint, QueueState, TelemetryPoint } from "./types";
 const DB_NAME = "zappos-telemetry";
 const DB_VERSION = 1;
 const STORE = "points";
+const BATCHED_RETRY_AFTER_MS = 2 * 60 * 1000;
+
+export function isTelemetryPointRetryEligible(
+  point: Pick<QueuedTelemetryPoint, "queue_state" | "last_attempt_at">,
+  now = Date.now(),
+) {
+  if (point.queue_state === "acknowledged") return false;
+  if (point.queue_state === "batched") {
+    if (!point.last_attempt_at) return true;
+    return now - Date.parse(point.last_attempt_at) > BATCHED_RETRY_AFTER_MS;
+  }
+  return true;
+}
+
+export function compareQueuedTelemetryPoints(
+  a: Pick<QueuedTelemetryPoint, "tracking_session_id" | "sequence_number" | "device_timestamp">,
+  b: Pick<QueuedTelemetryPoint, "tracking_session_id" | "sequence_number" | "device_timestamp">,
+) {
+  if (a.tracking_session_id !== b.tracking_session_id) {
+    return a.tracking_session_id.localeCompare(b.tracking_session_id);
+  }
+  if (a.sequence_number !== b.sequence_number) return a.sequence_number - b.sequence_number;
+  return Date.parse(a.device_timestamp) - Date.parse(b.device_timestamp);
+}
 
 function openTelemetryDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -79,8 +103,7 @@ export async function getPendingTelemetryPoints(
       if (!cursor || points.length >= limit) return;
       const value = cursor.value as QueuedTelemetryPoint;
       if (
-        value.queue_state !== "acknowledged" &&
-        value.queue_state !== "batched" &&
+        isTelemetryPointRetryEligible(value) &&
         (!trackingSessionId || value.tracking_session_id === trackingSessionId)
       ) {
         points.push(value);
@@ -89,7 +112,7 @@ export async function getPendingTelemetryPoints(
     };
     tx.oncomplete = () => {
       db.close();
-      resolve(points.sort((a, b) => a.sequence_number - b.sequence_number).slice(0, limit));
+      resolve(points.sort(compareQueuedTelemetryPoints).slice(0, limit));
     };
     tx.onerror = () => {
       db.close();

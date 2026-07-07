@@ -16,10 +16,12 @@ import {
 } from "./queue";
 
 const encoder = new JSONTelemetryEncoderV1();
+const inFlightSessions = new Set<string>();
 
 export interface SyncResult {
   uploaded: number;
   acknowledged: number;
+  conflicts: number;
   error: string | null;
 }
 
@@ -44,30 +46,51 @@ export async function syncTelemetryQueue(
   trackingSessionId?: string,
   limit = 30,
 ): Promise<SyncResult> {
-  const pending = await getPendingTelemetryPoints(trackingSessionId, limit);
-  if (pending.length === 0) return { uploaded: 0, acknowledged: 0, error: null };
-
-  const ids = pending.map((point) => point.telemetry_point_id);
-  const batch = createTelemetryBatch(pending);
-
-  await updateTelemetryQueueState(ids, "batched");
-  const { data, error } = await telemetryRpc().rpc("ingest_tracking_telemetry", {
-    _batch: batch as unknown as Json,
-  });
-
-  if (error) {
-    await updateTelemetryQueueState(ids, "failed", error.message);
-    return { uploaded: pending.length, acknowledged: 0, error: error.message };
+  const inFlightKey = trackingSessionId ?? "__all__";
+  if (inFlightSessions.has(inFlightKey)) {
+    return { uploaded: 0, acknowledged: 0, conflicts: 0, error: null };
   }
+  inFlightSessions.add(inFlightKey);
+  try {
+    const pending = await getPendingTelemetryPoints(trackingSessionId, limit);
+    if (pending.length === 0) return { uploaded: 0, acknowledged: 0, conflicts: 0, error: null };
 
-  const ack = data as unknown as TelemetryIngestAck;
-  const acknowledged = Array.isArray(ack?.acknowledged_point_ids) ? ack.acknowledged_point_ids : [];
-  await acknowledgeTelemetryPoints(acknowledged);
+    const ids = pending.map((point) => point.telemetry_point_id);
+    const batch = createTelemetryBatch(pending);
 
-  const missing = ids.filter((id) => !acknowledged.includes(id));
-  if (missing.length > 0) {
-    await updateTelemetryQueueState(missing, "failed", "Server did not acknowledge point");
+    await updateTelemetryQueueState(ids, "batched");
+    const { data, error } = await telemetryRpc().rpc("ingest_tracking_telemetry", {
+      _batch: batch as unknown as Json,
+    });
+
+    if (error) {
+      await updateTelemetryQueueState(ids, "failed", error.message);
+      return { uploaded: pending.length, acknowledged: 0, conflicts: 0, error: error.message };
+    }
+
+    const ack = data as unknown as TelemetryIngestAck;
+    const acknowledged = Array.isArray(ack?.acknowledged_point_ids)
+      ? ack.acknowledged_point_ids
+      : [];
+    const conflicts = Array.isArray(ack?.conflict_point_ids) ? ack.conflict_point_ids : [];
+    await acknowledgeTelemetryPoints(acknowledged);
+
+    if (conflicts.length > 0) {
+      await updateTelemetryQueueState(conflicts, "failed", "Server reported telemetry conflict");
+    }
+
+    const missing = ids.filter((id) => !acknowledged.includes(id) && !conflicts.includes(id));
+    if (missing.length > 0) {
+      await updateTelemetryQueueState(missing, "failed", "Server did not acknowledge point");
+    }
+
+    return {
+      uploaded: pending.length,
+      acknowledged: acknowledged.length,
+      conflicts: conflicts.length,
+      error: conflicts.length > 0 ? "Server reported telemetry conflict" : null,
+    };
+  } finally {
+    inFlightSessions.delete(inFlightKey);
   }
-
-  return { uploaded: pending.length, acknowledged: acknowledged.length, error: null };
 }

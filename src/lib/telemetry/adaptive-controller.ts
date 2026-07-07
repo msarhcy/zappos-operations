@@ -18,8 +18,10 @@ export interface AdaptiveCadenceDecision {
 // - High speed means a moving vehicle; low/no speed with little coordinate delta is stationary.
 // - Poor accuracy should not cause aggressive polling because it usually reflects device/environment limits.
 export function decideNextCapture(input: AdaptiveCadenceInput): AdaptiveCadenceDecision {
-  const accuracy = input.current?.horizontal_accuracy ?? null;
-  const speed = input.current?.device_speed ?? null;
+  const rawAccuracy = input.current?.horizontal_accuracy ?? null;
+  const rawSpeed = input.current?.device_speed ?? null;
+  const accuracy = rawAccuracy !== null && Number.isFinite(rawAccuracy) ? rawAccuracy : null;
+  const speed = rawSpeed !== null && Number.isFinite(rawSpeed) && rawSpeed >= 0 ? rawSpeed : null;
 
   if (accuracy !== null && accuracy > 100) {
     return { intervalMs: 60_000, movementState: "unknown", reason: "poor_accuracy" };

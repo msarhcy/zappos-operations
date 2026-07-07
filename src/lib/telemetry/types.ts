@@ -60,6 +60,8 @@ export interface TelemetryIngestAck {
   ok: boolean;
   batch_id: string;
   acknowledged_point_ids: string[];
+  conflict_point_ids?: string[];
+  rejected_point_ids?: string[];
   inserted_count: number;
 }
 

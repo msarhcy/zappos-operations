@@ -25,7 +25,8 @@ export function nextTelemetrySequence(trackingSessionId: string): number {
   if (typeof window === "undefined") return 1;
   const key = `${SEQUENCE_PREFIX}${trackingSessionId}`;
   const current = Number(window.localStorage.getItem(key) || "0");
-  const next = Number.isFinite(current) ? current + 1 : 1;
+  const timeComponent = Date.now() * 1000 + Math.floor(Math.random() * 1000);
+  const next = Math.max(Number.isFinite(current) ? current + 1 : 1, timeComponent);
   window.localStorage.setItem(key, String(next));
   return next;
 }
