@@ -862,8 +862,19 @@ export type Database = {
         Returns: Database["public"]["Tables"]["jobs"]["Row"];
       };
       driver_transition_job: {
-        Args: { _job_id: string; _action: string };
+        Args: {
+          _job_id: string;
+          _action: string;
+          _device_installation_id?: string | null;
+          _app_version?: string | null;
+          _device_platform?: string | null;
+          _location_permission_state?: string | null;
+        };
         Returns: Database["public"]["Tables"]["jobs"]["Row"];
+      };
+      ingest_tracking_telemetry: {
+        Args: { _batch: Json };
+        Returns: Json;
       };
       driver_update_job_notes: {
         Args: { _job_id: string; _notes: string };

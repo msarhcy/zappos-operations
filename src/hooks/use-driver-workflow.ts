@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompany } from "@/lib/company-context";
 import { useSession } from "@/lib/session";
+import { getDevicePlatform, getInstallationId } from "@/lib/telemetry/installation";
+import { queryLocationPermission } from "@/lib/telemetry/capture";
 import type { Database } from "@/integrations/supabase/types";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
@@ -82,9 +84,17 @@ export function useDriverWorkflow() {
   );
 
   const transition = async (jobId: string, action: "accept" | "start" | "arrive") => {
+    const permission =
+      action === "start"
+        ? await queryLocationPermission().catch(() => "unsupported" as const)
+        : null;
     const { error: err } = await supabase.rpc("driver_transition_job", {
       _job_id: jobId,
       _action: action,
+      _device_installation_id: action === "start" ? getInstallationId() : null,
+      _app_version: action === "start" ? "phase4-web" : null,
+      _device_platform: action === "start" ? getDevicePlatform() : null,
+      _location_permission_state: permission,
     });
     if (err) throw err;
     await fetch();

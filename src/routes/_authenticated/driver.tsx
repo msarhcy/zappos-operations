@@ -7,6 +7,7 @@ import {
   ClipboardList,
   FileSignature,
   Loader2,
+  MapPin,
   PenLine,
   Save,
   Truck,
@@ -17,6 +18,7 @@ import { useDriverWorkflow } from "@/hooks/use-driver-workflow";
 import { useIncidents } from "@/hooks/use-incidents";
 import { useMaintenance } from "@/hooks/use-maintenance";
 import { useCompany } from "@/lib/company-context";
+import { useDriverTripTracking, type DriverTrackingUiState } from "@/lib/telemetry/session";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +47,38 @@ const actionConfig: Record<
   accepted: { label: "Start Trip", action: "start", icon: CheckCircle },
   in_progress: { label: "Mark Arrived", action: "arrive", icon: CheckCircle },
   arrived: { label: "Complete Job", icon: CheckCircle },
+};
+
+const trackingCopy: Record<DriverTrackingUiState, { title: string; detail: string }> = {
+  inactive: {
+    title: "Tracking inactive",
+    detail: "ZappOS only records location during an authorized active trip.",
+  },
+  permission_required: {
+    title: "Location permission required",
+    detail: "Enable location for this trip. Tracking is visible and stops when the trip ends.",
+  },
+  active: {
+    title: "Tracking active for current trip",
+    detail: "Browser GPS points are queued locally first, then synced in batches when online.",
+  },
+  degraded: {
+    title: "Tracking degraded",
+    detail:
+      "Location capture is limited or GPS quality is poor. Trip recording continues where supported.",
+  },
+  offline: {
+    title: "Offline - trip recording continues where supported",
+    detail: "Points stay on this device until the browser is online again.",
+  },
+  syncing: {
+    title: "Syncing trip data",
+    detail: "Queued telemetry is being uploaded through the secure ingestion boundary.",
+  },
+  completed: {
+    title: "Tracking completed",
+    detail: "Tracking stopped for the completed operational trip.",
+  },
 };
 
 function formatWhen(value: string | null) {
@@ -181,6 +215,7 @@ function DriverPage() {
   } = useDriverWorkflow();
   const { create: createIncident } = useIncidents();
   const { create: createMaintenance } = useMaintenance();
+  const tracking = useDriverTripTracking({ driver, currentJob });
 
   const [busy, setBusy] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
@@ -358,6 +393,52 @@ function DriverPage() {
       {currentJob ? (
         <>
           <JobCard job={currentJob} label={`Current ${terminology.singular}`} />
+          <Card className="p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <h2 className="font-semibold">Trip tracking</h2>
+            </div>
+            <div className="space-y-3 text-sm">
+              <div>
+                <p className="font-medium">{trackingCopy[tracking.uiState].title}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {trackingCopy[tracking.uiState].detail}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                <div>Permission: {tracking.permissionState}</div>
+                <div>Network: {tracking.online ? "online" : "offline"}</div>
+                <div>Queue: {tracking.queuePending} pending</div>
+                <div>Movement: {tracking.movementState}</div>
+              </div>
+              {tracking.lastError ? (
+                <p className="text-xs text-status-warning">{tracking.lastError}</p>
+              ) : null}
+              <p className="text-xs text-muted-foreground">
+                Browser and PWA tracking can pause when the browser is closed, suspended, or killed.
+              </p>
+              {tracking.activeTrip ? (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Button
+                    type="button"
+                    variant={tracking.enabled ? "outline" : "default"}
+                    onClick={() => void tracking.enableTracking()}
+                    disabled={tracking.enabled && tracking.uiState !== "permission_required"}
+                  >
+                    {tracking.enabled ? "Tracking enabled" : "Enable trip tracking"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void tracking.syncNow()}
+                    disabled={!tracking.online || tracking.syncing || tracking.queuePending === 0}
+                  >
+                    {tracking.syncing ? "Syncing..." : "Sync now"}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          </Card>
           {primary ? (
             <Button
               className="h-14 w-full gap-2 text-base"

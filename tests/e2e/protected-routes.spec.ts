@@ -6,6 +6,7 @@ const protectedRoutes = [
   "/vehicles",
   "/drivers",
   "/operations",
+  "/tracking",
   "/dispatch",
   "/documents",
   "/incidents",
