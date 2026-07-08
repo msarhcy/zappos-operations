@@ -5,6 +5,7 @@ import {
   createFeedbackInsert,
   filterInsights,
   normalizeFutureZappBrainInsight,
+  safeJsonRecord,
   statusAfterFeedback,
   type ZappBrainInsight,
 } from "@/lib/zapp-brain-integration";
@@ -123,5 +124,20 @@ describe("phase 7 future adapter boundary", () => {
       confidence: "insufficient_data",
       evidence: { route: "A" },
     });
+  });
+
+  it("drops non-object evidence and affected entity payloads safely", () => {
+    const normalized = normalizeFutureZappBrainInsight(
+      {
+        title: "Bad payload",
+        evidence: ["not", "an", "object"],
+        affected_entities: null,
+      },
+      "company-1",
+    );
+
+    expect(normalized.evidence).toEqual({});
+    expect(normalized.affected_entities).toEqual({});
+    expect(safeJsonRecord("bad data")).toEqual({});
   });
 });

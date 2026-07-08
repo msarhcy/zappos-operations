@@ -46,6 +46,10 @@ function asRecord(value: unknown): JsonRecord {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as JsonRecord) : {};
 }
 
+export function safeJsonRecord(value: unknown): JsonRecord {
+  return asRecord(value);
+}
+
 export function confidenceLabel(confidence: ZappBrainConfidence) {
   switch (confidence) {
     case "high":

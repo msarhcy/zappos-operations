@@ -75,10 +75,18 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-function JsonViewer({ value }: { value: Record<string, unknown> }) {
+function safeJsonText(value: unknown) {
+  try {
+    return JSON.stringify(value ?? {}, null, 2) ?? "{}";
+  } catch {
+    return "{}";
+  }
+}
+
+function JsonViewer({ value }: { value: unknown }) {
   return (
     <pre className="max-h-64 overflow-auto rounded-md border border-border bg-muted/30 p-3 text-xs leading-relaxed">
-      {JSON.stringify(value, null, 2)}
+      {safeJsonText(value)}
     </pre>
   );
 }
@@ -132,12 +140,12 @@ function BrainPage() {
   }, [load]);
 
   const filteredInsights = useMemo(
-    () => filterInsights(insights, filters).sort(compareInsightsBySeverity),
+    () => [...filterInsights(insights, filters)].sort(compareInsightsBySeverity),
     [filters, insights],
   );
 
   const selected =
-    insights.find((insight) => insight.id === selectedId) ?? filteredInsights[0] ?? null;
+    filteredInsights.find((insight) => insight.id === selectedId) ?? filteredInsights[0] ?? null;
 
   const openUrgentCount = insights.filter(
     (insight) =>
