@@ -8,6 +8,7 @@ const protectedRoutes = [
   "/operations",
   "/tracking",
   "/route-intelligence",
+  "/brain",
   "/dispatch",
   "/documents",
   "/incidents",

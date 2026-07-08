@@ -16,6 +16,7 @@ import {
   Wrench,
   XCircle,
   Zap,
+  BrainCircuit,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -29,6 +30,36 @@ interface Stat {
   label: string;
   value: string | number;
   tone?: string;
+}
+
+interface UrgentBrainInsight {
+  id: string;
+  title: string;
+  severity: string;
+  status: string;
+  confidence: string;
+}
+
+type BrainDashboardQuery = {
+  from: (table: string) => {
+    select: (columns?: string) => {
+      eq: (
+        column: string,
+        value: unknown,
+      ) => {
+        order: (
+          column: string,
+          options?: { ascending?: boolean; nullsFirst?: boolean },
+        ) => {
+          limit: (count: number) => PromiseLike<{ data: unknown[] | null; error: Error | null }>;
+        };
+      };
+    };
+  };
+};
+
+function brainDashboardDb() {
+  return supabase as unknown as BrainDashboardQuery;
 }
 
 function StatCard({ icon: Icon, label, value, tone }: Stat) {
@@ -46,7 +77,7 @@ function StatCard({ icon: Icon, label, value, tone }: Stat) {
 }
 
 function DashboardPage() {
-  const { activeCompany, terminology } = useCompany();
+  const { activeCompany, terminology, hasAnyRole } = useCompany();
   const [expiringDocs, setExpiringDocs] = useState(0);
   const [expiredDocs, setExpiredDocs] = useState(0);
   const [failedJobs, setFailedJobs] = useState(0);
@@ -54,6 +85,8 @@ function DashboardPage() {
   const [criticalIncidents, setCriticalIncidents] = useState(0);
   const [overdueMaintenance, setOverdueMaintenance] = useState(0);
   const [activeMaintenance, setActiveMaintenance] = useState(0);
+  const [urgentBrainInsights, setUrgentBrainInsights] = useState<UrgentBrainInsight[]>([]);
+  const canReadBrain = hasAnyRole(["admin", "fleet_manager", "dispatcher", "viewer"]);
 
   const { jobs, loading: jobsLoading, error: jobsError, fetch: fetchJobs } = useJobs();
   const {
@@ -155,10 +188,31 @@ function DashboardPage() {
             item.status !== "completed" && item.scheduled_date && item.scheduled_date < today,
         ).length || 0,
       );
+
+      if (canReadBrain) {
+        const { data: brainInsights } = await brainDashboardDb()
+          .from("zapp_brain_insights")
+          .select("id,title,severity,status,confidence,created_at")
+          .eq("company_id", activeCompany.id)
+          .order("created_at", { ascending: false })
+          .limit(20);
+
+        setUrgentBrainInsights(
+          ((brainInsights ?? []) as UrgentBrainInsight[])
+            .filter(
+              (insight) =>
+                ["critical", "high"].includes(insight.severity) &&
+                ["new", "reviewing", "needs_follow_up"].includes(insight.status),
+            )
+            .slice(0, 3),
+        );
+      } else {
+        setUrgentBrainInsights([]);
+      }
     };
 
     load();
-  }, [activeCompany]);
+  }, [activeCompany, canReadBrain]);
 
   const attentionItems: string[] = [];
   if (expiredDocs > 0) attentionItems.push(`${expiredDocs} documents expired`);
@@ -176,6 +230,9 @@ function DashboardPage() {
     attentionItems.push(
       `${assignedProblemDriversCount} active ${terminology.plural} have suspended or off-duty drivers`,
     );
+  urgentBrainInsights.forEach((insight) => {
+    attentionItems.push(`Zapp Brain ${insight.severity}: ${insight.title}`);
+  });
 
   if (jobsLoading || vehiclesLoading || driversLoading) {
     return (
@@ -300,7 +357,11 @@ function DashboardPage() {
                 key={i}
                 className="flex items-start gap-3 rounded-md border border-status-warning/30 bg-status-warning/5 p-3"
               >
-                <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-status-warning" />
+                {item.startsWith("Zapp Brain") ? (
+                  <BrainCircuit className="mt-0.5 h-4 w-4 flex-shrink-0 text-status-warning" />
+                ) : (
+                  <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-status-warning" />
+                )}
                 <p className="text-sm text-foreground">{item}</p>
               </div>
             ))}
