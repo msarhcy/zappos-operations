@@ -73,7 +73,7 @@ export function normalizeRouteLocation(value: string | null | undefined) {
 export function buildRouteGroupKey(input: RouteGroupInput) {
   const pickup = normalizeRouteLocation(input.pickupLocation);
   const dropoff = normalizeRouteLocation(input.dropoffLocation);
-  const customer = input.customerId?.trim() || "no_customer";
+  const customer = input.customerId?.trim().toLowerCase() || "no_customer";
   return `customer:${customer}|pickup:${pickup}|dropoff:${dropoff}`;
 }
 

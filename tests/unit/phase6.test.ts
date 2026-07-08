@@ -31,6 +31,38 @@ describe("phase 6 route grouping", () => {
     });
     expect(a).not.toBe(b);
   });
+
+  it("normalizes customer id case and empty locations deterministically", () => {
+    expect(
+      buildRouteGroupKey({
+        customerId: "  CUSTOMER-A ",
+        pickupLocation: "",
+        dropoffLocation: null,
+      }),
+    ).toBe("customer:customer-a|pickup:unknown|dropoff:unknown");
+  });
+
+  it("changes route key when pickup or destination changes", () => {
+    const base = buildRouteGroupKey({
+      customerId: "customer-a",
+      pickupLocation: "Depot",
+      dropoffLocation: "Store",
+    });
+    expect(
+      buildRouteGroupKey({
+        customerId: "customer-a",
+        pickupLocation: "Depot 2",
+        dropoffLocation: "Store",
+      }),
+    ).not.toBe(base);
+    expect(
+      buildRouteGroupKey({
+        customerId: "customer-a",
+        pickupLocation: "Depot",
+        dropoffLocation: "Store 2",
+      }),
+    ).not.toBe(base);
+  });
 });
 
 describe("phase 6 delay calculation", () => {
@@ -109,6 +141,27 @@ describe("phase 6 stop and event detection", () => {
     expect(result.delayEvents).toEqual(
       expect.arrayContaining(["late_start", "slow_progress", "delayed_completion", "failed_trip"]),
     );
+  });
+
+  it("does not label early cancelled jobs as delayed or failed trips", () => {
+    const result = evaluateRoutePerformance({
+      scheduledAt: "2026-07-08T10:00:00.000Z",
+      startedAt: "2026-07-08T09:55:00.000Z",
+      completedAt: null,
+      failedAt: null,
+      status: "cancelled",
+      observedDistanceMeters: 0,
+      observedDurationSeconds: null,
+      stationaryDurationSeconds: 0,
+      averageObservedSpeedMps: null,
+      observedPointCount: 10,
+      acceptedPointCount: 10,
+      rejectedPointCount: 0,
+    });
+
+    expect(result.delayMetrics.delayMinutes).toBe(-5);
+    expect(result.delayEvents).not.toContain("late_start");
+    expect(result.delayEvents).not.toContain("failed_trip");
   });
 });
 
