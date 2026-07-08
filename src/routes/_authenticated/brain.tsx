@@ -75,8 +75,21 @@ interface BrainRunRow {
   status: string;
   output_summary: Record<string, unknown>;
   error_message: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  generated_insight_count: number | null;
+  stale_insight_count: number | null;
   created_at: string;
 }
+
+interface ExistingDeterministicInsightRow {
+  id: string;
+  evidence?: Record<string, unknown>;
+  status: ZappBrainInsightStatus;
+}
+
+const ACTIVE_DEDUPE_STATUSES: ZappBrainInsightStatus[] = ["new", "reviewing", "needs_follow_up"];
+const AUTO_STALE_STATUSES: ZappBrainInsightStatus[] = ["new", "reviewing"];
 
 function brainDb() {
   return supabase as unknown as BrainSupabase;
@@ -101,6 +114,10 @@ function safeJsonText(value: unknown) {
   } catch {
     return "{}";
   }
+}
+
+function dedupeKeyFromInsight(row: ExistingDeterministicInsightRow) {
+  return typeof row.evidence?.dedupe_key === "string" ? row.evidence.dedupe_key : null;
 }
 
 function JsonViewer({ value }: { value: unknown }) {
@@ -230,7 +247,8 @@ function BrainPage() {
           id: runId,
           company_id: activeCompanyId,
           source: "deterministic_v0",
-          status: "received",
+          status: "running",
+          started_at: new Date().toISOString(),
           input_summary: { mode: "deterministic_v0" },
         });
       if (runInsert.error) throw runInsert.error;
@@ -268,7 +286,7 @@ function BrainPage() {
           .limit(1000),
         brainDb()
           .from("zapp_brain_insights")
-          .select("evidence,status,source")
+          .select("id,evidence,status,source")
           .eq("company_id", activeCompanyId)
           .eq("source", "deterministic_v0")
           .limit(1000),
@@ -288,13 +306,15 @@ function BrainPage() {
         if (result.error) throw result.error;
       }
 
-      const existingDedupeKeys = new Set(
-        ((existingInsightResult.data ?? []) as Array<{ evidence?: Record<string, unknown> }>)
-          .map((row) => row.evidence?.dedupe_key)
+      const existingRows = (existingInsightResult.data ?? []) as ExistingDeterministicInsightRow[];
+      const activeDedupeKeys = new Set(
+        existingRows
+          .filter((row) => ACTIVE_DEDUPE_STATUSES.includes(row.status))
+          .map(dedupeKeyFromInsight)
           .filter((value): value is string => typeof value === "string"),
       );
 
-      const generated = generateDeterministicBrainInsights({
+      const input = {
         companyId: activeCompanyId,
         now: new Date(),
         documentExpiryWarningDays: activeCompany.document_expiry_warning_days ?? 30,
@@ -306,7 +326,19 @@ function BrainPage() {
         jobs: (jobResult.data ?? []) as BrainJobInput[],
         jobEvents: (jobEventResult.data ?? []) as BrainJobEventInput[],
         trackingSummaries: (trackingSummaryResult.data ?? []) as BrainTrackingSummaryInput[],
-        existingDedupeKeys,
+      };
+      const currentCandidates = generateDeterministicBrainInsights(input);
+      const currentDedupeKeys = new Set(currentCandidates.map((item) => item.dedupeKey));
+      const generated = generateDeterministicBrainInsights({
+        ...input,
+        existingDedupeKeys: activeDedupeKeys,
+      });
+
+      const staleRows = existingRows.filter((row) => {
+        const key = dedupeKeyFromInsight(row);
+        return (
+          key != null && AUTO_STALE_STATUSES.includes(row.status) && !currentDedupeKeys.has(key)
+        );
       });
 
       if (generated.length > 0) {
@@ -321,6 +353,15 @@ function BrainPage() {
         if (insightInsert.error) throw insightInsert.error;
       }
 
+      for (const staleRow of staleRows) {
+        const staleUpdate = await brainDb()
+          .from("zapp_brain_insights")
+          .update({ status: "dismissed" })
+          .eq("id", staleRow.id)
+          .eq("company_id", activeCompanyId);
+        if (staleUpdate.error) throw staleUpdate.error;
+      }
+
       const learningInsert = await brainDb()
         .from("zapp_brain_learning_records")
         .insert({
@@ -329,7 +370,8 @@ function BrainPage() {
           label: "deterministic_v0_run",
           payload: {
             generated_count: generated.length,
-            skipped_existing_count: existingDedupeKeys.size,
+            skipped_active_existing_count: activeDedupeKeys.size,
+            stale_dismissed_count: staleRows.length,
             advisory_only: true,
           },
         });
@@ -338,9 +380,13 @@ function BrainPage() {
       const runUpdate = await brainDb()
         .from("zapp_brain_runs")
         .update({
-          status: "processed",
+          status: "completed",
+          completed_at: new Date().toISOString(),
+          generated_insight_count: generated.length,
+          stale_insight_count: staleRows.length,
           output_summary: {
             generated_count: generated.length,
+            stale_dismissed_count: staleRows.length,
             advisory_only: true,
             source: "deterministic_v0",
           },
@@ -355,7 +401,8 @@ function BrainPage() {
         .from("zapp_brain_runs")
         .update({
           status: "failed",
-          error_message: err instanceof Error ? err.message : "Deterministic analysis failed",
+          completed_at: new Date().toISOString(),
+          error_message: "Deterministic analysis failed",
         })
         .eq("id", runId)
         .eq("company_id", activeCompanyId);
@@ -416,16 +463,25 @@ function BrainPage() {
 
       <Card className="p-4">
         <div className="grid gap-3 text-sm sm:grid-cols-3">
-          <Field label="Last run" value={lastRun ? formatDate(lastRun.created_at) : "-"} />
+          <Field
+            label="Last run"
+            value={
+              lastRun
+                ? formatDate(lastRun.completed_at ?? lastRun.started_at ?? lastRun.created_at)
+                : "-"
+            }
+          />
           <Field label="Run status" value={lastRun?.status ? label(lastRun.status) : "-"} />
           <Field
             label="Generated insights"
             value={
               lastGeneratedCount != null
                 ? String(lastGeneratedCount)
-                : typeof lastRun?.output_summary?.generated_count === "number"
-                  ? String(lastRun.output_summary.generated_count)
-                  : "-"
+                : typeof lastRun?.generated_insight_count === "number"
+                  ? String(lastRun.generated_insight_count)
+                  : typeof lastRun?.output_summary?.generated_count === "number"
+                    ? String(lastRun.output_summary.generated_count)
+                    : "-"
             }
           />
         </div>

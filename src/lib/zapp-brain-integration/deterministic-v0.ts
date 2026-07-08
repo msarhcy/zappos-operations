@@ -39,6 +39,9 @@ export interface BrainRouteRecordInput {
   route_key: string;
   delay_minutes: number | null;
   delay_events: string[];
+  observed_point_count?: number | null;
+  accepted_point_count?: number | null;
+  rejected_point_count?: number | null;
   data_quality_score: number;
   confidence: ZappBrainConfidence;
 }
@@ -115,12 +118,27 @@ export interface DeterministicInsightCandidate extends ZappBrainInsightDraft {
 
 const SOURCE = "deterministic_v0";
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const MIN_REPEATED_DELAY_TRIPS = 2;
+const MIN_REPEATED_ROUTE_SAMPLE = 2;
+const MIN_DELAY_MINUTES = 5;
+const HIGH_DELAY_MINUTES = 30;
+const POOR_TELEMETRY_QUALITY_SCORE = 50;
+const HIGH_REJECTED_POINT_RATIO = 0.25;
+const MIN_TRACKING_POINTS_FOR_QUALITY_INSIGHT = 2;
+const VEHICLE_RELIABILITY_SIGNAL_THRESHOLD = 2;
+const HIGH_SIGNAL_COUNT = 4;
+
+function parseDateOnly(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const timestamp = Date.parse(`${value}T00:00:00.000Z`);
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
 
 function daysUntil(date: string, now: Date) {
+  const timestamp = parseDateOnly(date);
+  if (timestamp == null) return null;
   return Math.ceil(
-    (Date.parse(`${date}T00:00:00.000Z`) -
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())) /
-      MS_PER_DAY,
+    (timestamp - Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())) / MS_PER_DAY,
   );
 }
 
@@ -186,6 +204,7 @@ export function generateDeterministicBrainInsights(
   for (const doc of input.documents) {
     if (!doc.expiry_date) continue;
     const days = daysUntil(doc.expiry_date, input.now);
+    if (days == null) continue;
     if (days > input.documentExpiryWarningDays) continue;
     const expired = doc.expiry_date < today;
     addIfNew(
@@ -216,9 +235,9 @@ export function generateDeterministicBrainInsights(
 
   for (const baseline of input.routeBaselines) {
     if (
-      baseline.completed_trip_count < 2 ||
-      baseline.delayed_trip_count < 2 ||
-      (baseline.average_delay_minutes ?? 0) <= 5
+      baseline.completed_trip_count < MIN_REPEATED_ROUTE_SAMPLE ||
+      baseline.delayed_trip_count < MIN_REPEATED_DELAY_TRIPS ||
+      (baseline.average_delay_minutes ?? 0) <= MIN_DELAY_MINUTES
     ) {
       continue;
     }
@@ -229,7 +248,7 @@ export function generateDeterministicBrainInsights(
         companyId: input.companyId,
         dedupeKey: `route-delay:${baseline.route_key}`,
         category: "route_intelligence",
-        severity: (baseline.average_delay_minutes ?? 0) >= 30 ? "high" : "medium",
+        severity: (baseline.average_delay_minutes ?? 0) >= HIGH_DELAY_MINUTES ? "high" : "medium",
         title: "Repeated route delay pattern",
         explanation: `Route has ${baseline.delayed_trip_count} delayed trips across ${baseline.completed_trip_count} completed trips.`,
         recommendation: "Review route history, customer timing, and dispatch assumptions.",
@@ -250,7 +269,16 @@ export function generateDeterministicBrainInsights(
   }
 
   for (const record of input.routeRecords) {
-    if (record.data_quality_score >= 50 && record.confidence !== "insufficient_data") continue;
+    const observedPointCount = record.observed_point_count ?? null;
+    const hasTinyTelemetrySample =
+      observedPointCount != null && observedPointCount < MIN_TRACKING_POINTS_FOR_QUALITY_INSIGHT;
+    if (
+      record.data_quality_score >= POOR_TELEMETRY_QUALITY_SCORE &&
+      record.confidence !== "insufficient_data"
+    ) {
+      continue;
+    }
+    if (hasTinyTelemetrySample && record.confidence !== "insufficient_data") continue;
     addIfNew(
       insights,
       seen,
@@ -262,12 +290,16 @@ export function generateDeterministicBrainInsights(
         title: "Poor telemetry quality on route record",
         explanation: `Route performance record has ${Math.round(record.data_quality_score)}% data quality.`,
         recommendation: "Review tracking coverage before relying on route performance metrics.",
-        confidence: "high",
+        confidence:
+          record.confidence === "insufficient_data" || hasTinyTelemetrySample ? "low" : "medium",
         evidence: {
           route_performance_record_id: record.id,
           job_id: record.job_id,
           data_quality_score: record.data_quality_score,
           confidence: record.confidence,
+          observed_point_count: record.observed_point_count ?? null,
+          accepted_point_count: record.accepted_point_count ?? null,
+          rejected_point_count: record.rejected_point_count ?? null,
         },
         affected_entities: { jobs: [record.job_id], route_performance_records: [record.id] },
       }),
@@ -279,7 +311,13 @@ export function generateDeterministicBrainInsights(
       summary.observed_point_count > 0
         ? summary.rejected_point_count / summary.observed_point_count
         : 0;
-    if ((summary.telemetry_quality_score ?? 100) >= 50 && rejectedRatio <= 0.25) continue;
+    if (summary.observed_point_count < MIN_TRACKING_POINTS_FOR_QUALITY_INSIGHT) continue;
+    if (
+      (summary.telemetry_quality_score ?? 100) >= POOR_TELEMETRY_QUALITY_SCORE &&
+      rejectedRatio <= HIGH_REJECTED_POINT_RATIO
+    ) {
+      continue;
+    }
     addIfNew(
       insights,
       seen,
@@ -292,7 +330,7 @@ export function generateDeterministicBrainInsights(
         explanation: `Tracking session has weak telemetry quality or elevated rejected points.`,
         recommendation:
           "Review GPS capture conditions and tracking data before operational conclusions.",
-        confidence: "high",
+        confidence: "medium",
         evidence: {
           tracking_session_id: summary.tracking_session_id,
           observed_point_count: summary.observed_point_count,
@@ -396,11 +434,11 @@ export function generateDeterministicBrainInsights(
   }
 
   const delayedByCustomer = countBy(
-    input.routeRecords.filter((record) => (record.delay_minutes ?? 0) > 5),
+    input.routeRecords.filter((record) => (record.delay_minutes ?? 0) > MIN_DELAY_MINUTES),
     (record) => record.customer_id,
   );
   for (const [customerId, count] of delayedByCustomer) {
-    if (count < 2) continue;
+    if (count < MIN_REPEATED_DELAY_TRIPS) continue;
     addIfNew(
       insights,
       seen,
@@ -408,10 +446,11 @@ export function generateDeterministicBrainInsights(
         companyId: input.companyId,
         dedupeKey: `customer-delay:${customerId}`,
         category: "customer",
-        severity: count >= 4 ? "high" : "medium",
-        title: "Repeated customer delay pattern",
+        severity: count >= HIGH_SIGNAL_COUNT ? "high" : "medium",
+        title: "Repeated delays associated with customer",
         explanation: `${count} delayed route performance records are associated with this customer.`,
-        recommendation: "Review customer timing expectations and dispatch notes.",
+        recommendation:
+          "Review historical customer-associated timing, dispatch notes, and operational context.",
         confidence: "medium",
         evidence: { customer_id: customerId, delayed_record_count: count },
         affected_entities: { customers: [customerId] },
@@ -419,18 +458,28 @@ export function generateDeterministicBrainInsights(
     );
   }
 
-  const reliabilityCounts = countBy(
-    [
-      ...input.jobs.filter((job) => job.status === "failed" && job.vehicle_id),
-      ...input.maintenance.filter((item) => item.status !== "completed"),
-      ...input.incidents.filter(
-        (incident) => incident.status !== "resolved" && incident.vehicle_id,
-      ),
-    ],
-    (item) => item.vehicle_id,
-  );
-  for (const [vehicleId, count] of reliabilityCounts) {
-    if (count < 2) continue;
+  const vehicleIds = new Set<string>();
+  input.jobs.forEach((job) => {
+    if (job.status === "failed" && job.vehicle_id) vehicleIds.add(job.vehicle_id);
+  });
+  input.maintenance.forEach((item) => {
+    if (item.status !== "completed" && item.vehicle_id) vehicleIds.add(item.vehicle_id);
+  });
+  input.incidents.forEach((incident) => {
+    if (incident.status !== "resolved" && incident.vehicle_id) vehicleIds.add(incident.vehicle_id);
+  });
+  for (const vehicleId of vehicleIds) {
+    const failedJobCount = input.jobs.filter(
+      (job) => job.status === "failed" && job.vehicle_id === vehicleId,
+    ).length;
+    const activeMaintenanceCount = input.maintenance.filter(
+      (item) => item.status !== "completed" && item.vehicle_id === vehicleId,
+    ).length;
+    const openIncidentCount = input.incidents.filter(
+      (incident) => incident.status !== "resolved" && incident.vehicle_id === vehicleId,
+    ).length;
+    const count = failedJobCount + activeMaintenanceCount + openIncidentCount;
+    if (count < VEHICLE_RELIABILITY_SIGNAL_THRESHOLD) continue;
     addIfNew(
       insights,
       seen,
@@ -438,12 +487,20 @@ export function generateDeterministicBrainInsights(
         companyId: input.companyId,
         dedupeKey: `vehicle-reliability:${vehicleId}`,
         category: "vehicle",
-        severity: count >= 4 ? "high" : "medium",
-        title: "Vehicle reliability attention needed",
+        severity: count >= HIGH_SIGNAL_COUNT ? "high" : "medium",
+        title: "Repeated operational issues associated with vehicle",
         explanation: `${count} failed jobs, active maintenance items, or open incidents are associated with this vehicle.`,
-        recommendation: "Review vehicle history before assigning further critical work.",
+        recommendation:
+          "Review vehicle history and current operational context before making assignment decisions.",
         confidence: "medium",
-        evidence: { vehicle_id: vehicleId, reliability_signal_count: count },
+        evidence: {
+          vehicle_id: vehicleId,
+          reliability_signal_count: count,
+          failed_job_count: failedJobCount,
+          active_maintenance_count: activeMaintenanceCount,
+          open_incident_count: openIncidentCount,
+          analysis_window: "current_open_records",
+        },
         affected_entities: { vehicles: [vehicleId] },
       }),
     );
