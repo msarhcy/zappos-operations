@@ -47,6 +47,16 @@ describe("phase 9 route replay", () => {
       expect.objectContaining({ index: 1, sequenceNumber: 3 }),
     ]);
   });
+
+  it("excludes poor and invalid observations from replay frames", () => {
+    const replay = buildRouteReplay([
+      { ...points[0], quality_status: "poor", sequence_number: 1 },
+      { ...points[0], latitude: 91, quality_status: "high", sequence_number: 2 },
+      { ...points[2], quality_status: "acceptable", sequence_number: 3 },
+    ]);
+
+    expect(replay.map((frame) => frame.sequenceNumber)).toEqual([3]);
+  });
 });
 
 describe("phase 9 timeline ordering", () => {
@@ -108,6 +118,61 @@ describe("phase 9 geofence events", () => {
       "exited_depot",
     ]);
   });
+
+  it("does not emit repeated enter or exit events while state is unchanged", () => {
+    const events = detectGeofenceEvents({
+      geofences: [
+        {
+          id: "depot-1",
+          label: "Depot",
+          type: "depot",
+          latitude: 36.1,
+          longitude: -115.1,
+          radiusMeters: 100,
+        },
+      ],
+      points: [
+        points[0],
+        { ...points[0], sequence_number: 2, device_timestamp: "2026-07-11T10:01:00.000Z" },
+        {
+          ...points[0],
+          latitude: 36.12,
+          sequence_number: 3,
+          device_timestamp: "2026-07-11T10:02:00.000Z",
+        },
+        {
+          ...points[0],
+          latitude: 36.13,
+          sequence_number: 4,
+          device_timestamp: "2026-07-11T10:03:00.000Z",
+        },
+      ],
+    });
+
+    expect(events.map((event) => event.type)).toEqual(["entered_depot", "exited_depot"]);
+  });
+
+  it("ignores poor and rejected telemetry for geofence state", () => {
+    const events = detectGeofenceEvents({
+      geofences: [
+        {
+          id: "customer-1",
+          label: "Customer",
+          type: "customer",
+          latitude: 36.12,
+          longitude: -115.1,
+          radiusMeters: 100,
+        },
+      ],
+      points: [
+        { ...points[2], quality_status: "poor", sequence_number: 1 },
+        { ...points[1], quality_status: "rejected", sequence_number: 2 },
+        { ...points[2], quality_status: "acceptable", sequence_number: 3 },
+      ],
+    });
+
+    expect(events.map((event) => event.type)).toEqual(["customer_arrival"]);
+  });
 });
 
 describe("phase 9 deviation detection", () => {
@@ -154,6 +219,39 @@ describe("phase 9 deviation detection", () => {
       "returned_to_route",
     ]);
   });
+
+  it("excludes poor telemetry from deviation state changes", () => {
+    const events = detectCorridorDeviation(
+      [
+        { ...points[0], latitude: 36.1, longitude: -115.1, sequence_number: 1 },
+        {
+          ...points[0],
+          latitude: 36.1,
+          longitude: -115.09,
+          quality_status: "poor",
+          sequence_number: 2,
+          device_timestamp: "2026-07-11T10:01:00.000Z",
+        },
+        {
+          ...points[0],
+          latitude: 36.11,
+          longitude: -115.1,
+          sequence_number: 3,
+          device_timestamp: "2026-07-11T10:02:00.000Z",
+        },
+      ],
+      {
+        points: [
+          { latitude: 36.1, longitude: -115.1 },
+          { latitude: 36.12, longitude: -115.1 },
+        ],
+        minorMeters: 50,
+        majorMeters: 500,
+      },
+    );
+
+    expect(events.map((event) => event.type)).toEqual(["within_corridor"]);
+  });
 });
 
 describe("phase 9 telemetry quality monitor", () => {
@@ -167,7 +265,7 @@ describe("phase 9 telemetry quality monitor", () => {
           ...points[0],
           quality_status: "poor",
           horizontal_accuracy: 75,
-          quality_flags: ["POOR_ACCURACY", "DELAYED_UPLOAD"],
+          quality_flags: ["POOR_ACCURACY", "WEAK_SIGNAL", "DELAYED_UPLOAD"],
         },
         { ...points[1], quality_status: "rejected" },
         {
@@ -191,6 +289,24 @@ describe("phase 9 telemetry quality monitor", () => {
       outOfOrderTelemetry: 1,
       offline: true,
     });
+  });
+
+  it("does not report weak signal from poor accuracy alone", () => {
+    const summary = summarizeTelemetryQuality({
+      now: new Date("2026-07-11T10:01:00.000Z"),
+      activeSessionCount: 1,
+      points: [
+        {
+          ...points[0],
+          quality_status: "poor",
+          horizontal_accuracy: 90,
+          quality_flags: ["POOR_ACCURACY"],
+        },
+      ],
+    });
+
+    expect(summary.poorGps).toBe(1);
+    expect(summary.weakSignal).toBe(0);
   });
 });
 

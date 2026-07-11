@@ -47,7 +47,9 @@ export interface GeofenceDefinition {
 
 export interface CorridorDefinition {
   points: Array<{ latitude: number; longitude: number }>;
+  /** Observation distance above this value emits a deterministic minor deviation. */
   minorMeters: number;
+  /** Observation distance above this value emits a deterministic major deviation. */
   majorMeters: number;
 }
 
@@ -96,8 +98,8 @@ function orderedEvents(events: TimelineEvent[]) {
   });
 }
 
-function acceptedPoint(point: OperationsPoint) {
-  return point.quality_status !== "rejected";
+function crediblePoint(point: OperationsPoint) {
+  return point.quality_status === "high" || point.quality_status === "acceptable";
 }
 
 function validPoint(point: OperationsPoint): point is OperationsPoint & {
@@ -105,11 +107,15 @@ function validPoint(point: OperationsPoint): point is OperationsPoint & {
   longitude: number;
 } {
   return (
-    acceptedPoint(point) &&
+    crediblePoint(point) &&
     Number.isFinite(point.latitude) &&
     Number.isFinite(point.longitude) &&
     point.latitude !== null &&
-    point.longitude !== null
+    point.longitude !== null &&
+    point.latitude >= -90 &&
+    point.latitude <= 90 &&
+    point.longitude >= -180 &&
+    point.longitude <= 180
   );
 }
 
@@ -164,9 +170,12 @@ export function buildTripTimeline(input: {
 
   let lastMovement: string | null = null;
   for (const point of input.points
-    .filter(acceptedPoint)
+    .filter(validPoint)
     .slice()
-    .sort((a, b) => Date.parse(a.device_timestamp) - Date.parse(b.device_timestamp))) {
+    .sort((a, b) => {
+      const timeDiff = Date.parse(a.device_timestamp) - Date.parse(b.device_timestamp);
+      return timeDiff !== 0 ? timeDiff : a.sequence_number - b.sequence_number;
+    })) {
     const movement = point.movement_state;
     if ((movement === "moving" || movement === "stationary") && movement !== lastMovement) {
       events.push({
@@ -355,10 +364,8 @@ export function summarizeTelemetryQuality(input: {
   const outOfOrderTelemetry = input.points.filter((point) =>
     point.quality_flags?.includes("OUT_OF_ORDER"),
   ).length;
-  const weakSignal = input.points.filter(
-    (point) =>
-      point.quality_flags?.includes("POOR_ACCURACY") ||
-      (point.horizontal_accuracy != null && point.horizontal_accuracy > 50),
+  const weakSignal = input.points.filter((point) =>
+    point.quality_flags?.includes("WEAK_SIGNAL"),
   ).length;
   const highRejectionRate = input.points.length >= 5 && rejected / input.points.length >= 0.25;
   const offline =

@@ -150,6 +150,7 @@ interface BrainInsightRow {
   severity: string;
   confidence: string;
   status: string;
+  affected_entities: unknown;
   created_at: string;
 }
 
@@ -162,6 +163,14 @@ interface AuditRow {
   tracking_session_id: string | null;
   job_id: string | null;
   occurred_at: string;
+}
+
+interface JobEventRow {
+  id: string;
+  job_id: string;
+  event_type: string;
+  message: string | null;
+  created_at: string;
 }
 
 function age(value: string | null) {
@@ -201,6 +210,16 @@ function isValidLocation(location: LatestLocationRow) {
   );
 }
 
+function affectedEntityIncludes(
+  affectedEntities: unknown,
+  key: "jobs" | "tracking_sessions" | "vehicles" | "drivers",
+  id: string | null | undefined,
+) {
+  if (!id || !affectedEntities || typeof affectedEntities !== "object") return false;
+  const value = (affectedEntities as Record<string, unknown>)[key];
+  return Array.isArray(value) && value.includes(id);
+}
+
 function TrackingPage() {
   const { activeCompany, hasAnyRole } = useCompany();
   const [loading, setLoading] = useState(true);
@@ -218,6 +237,7 @@ function TrackingPage() {
   const [maintenance, setMaintenance] = useState<MaintenanceRow[]>([]);
   const [brainInsights, setBrainInsights] = useState<BrainInsightRow[]>([]);
   const [auditLog, setAuditLog] = useState<AuditRow[]>([]);
+  const [jobEvents, setJobEvents] = useState<JobEventRow[]>([]);
   const [replayPlaying, setReplayPlaying] = useState(false);
   const [replaySpeed, setReplaySpeed] = useState<1 | 2 | 5>(1);
   const [replayIndex, setReplayIndex] = useState(0);
@@ -282,6 +302,7 @@ function TrackingPage() {
         maintenanceResult,
         brainResult,
         auditResult,
+        jobEventsResult,
         queueStats,
       ] = await Promise.all([
         telemetryFrom<TrackingSessionRow>("tracking_sessions")
@@ -314,7 +335,9 @@ function TrackingPage() {
           .order("created_at", { ascending: false })
           .limit(25),
         telemetryFrom<BrainInsightRow>("zapp_brain_insights")
-          .select("id, title, category, severity, confidence, status, created_at")
+          .select(
+            "id, title, category, severity, confidence, status, affected_entities, created_at",
+          )
           .eq("company_id", activeCompanyId)
           .order("created_at", { ascending: false })
           .limit(25),
@@ -325,6 +348,11 @@ function TrackingPage() {
           .eq("company_id", activeCompanyId)
           .order("occurred_at", { ascending: false })
           .limit(25),
+        telemetryFrom<JobEventRow>("job_events")
+          .select("id, job_id, event_type, message, created_at")
+          .eq("company_id", activeCompanyId)
+          .order("created_at", { ascending: false })
+          .limit(100),
         getTelemetryQueueStats().catch(() => ({ pending: 0, failed: 1, total: 0 })),
       ]);
 
@@ -338,6 +366,7 @@ function TrackingPage() {
       if (maintenanceResult.error) throw maintenanceResult.error;
       if (brainResult.error) throw brainResult.error;
       if (auditResult.error) throw auditResult.error;
+      if (jobEventsResult.error) throw jobEventsResult.error;
 
       const pointMetrics = pointsResult.data ?? [];
       const nextLocations = ((latestResult.data ?? []) as LatestLocationRow[]).filter(
@@ -352,6 +381,7 @@ function TrackingPage() {
       setMaintenance((maintenanceResult.data ?? []) as MaintenanceRow[]);
       setBrainInsights((brainResult.data ?? []) as BrainInsightRow[]);
       setAuditLog((auditResult.data ?? []) as AuditRow[]);
+      setJobEvents((jobEventsResult.data ?? []) as JobEventRow[]);
       setQueue(queueStats);
       setMetrics({
         pointsToday: pointMetrics.length,
@@ -544,9 +574,8 @@ function TrackingPage() {
         points: tracePoints,
         now: new Date(),
         activeSessionCount: activeSessions.length,
-        duplicateTelemetryCount: queue.failed,
       }),
-    [activeSessions.length, queue.failed, tracePoints],
+    [activeSessions.length, tracePoints],
   );
 
   const replayFrames = useMemo(() => buildRouteReplay(tracePoints), [tracePoints]);
@@ -685,18 +714,72 @@ function TrackingPage() {
     [activeCompanyId, auditLog, selectedSession],
   );
 
+  const selectedJobEvents = useMemo<TimelineEvent[]>(
+    () =>
+      jobEvents
+        .filter((item) => item.job_id === selectedSession?.job_id)
+        .map((item) => ({
+          id: `job:${item.id}`,
+          occurredAt: item.created_at,
+          source: "job",
+          type: item.event_type,
+          label: item.message ?? item.event_type.replaceAll("_", " "),
+          severity: "info",
+        })),
+    [jobEvents, selectedSession?.job_id],
+  );
+
+  const selectedBrainEvents = useMemo<TimelineEvent[]>(
+    () =>
+      brainInsights
+        .filter(
+          (item) =>
+            affectedEntityIncludes(item.affected_entities, "jobs", selectedSession?.job_id) ||
+            affectedEntityIncludes(
+              item.affected_entities,
+              "tracking_sessions",
+              selectedSession?.id,
+            ) ||
+            affectedEntityIncludes(
+              item.affected_entities,
+              "vehicles",
+              selectedSession?.vehicle_id,
+            ) ||
+            affectedEntityIncludes(item.affected_entities, "drivers", selectedSession?.driver_id),
+        )
+        .map((item) => ({
+          id: `brain:${item.id}`,
+          occurredAt: item.created_at,
+          source: "brain",
+          type: "brain_insight",
+          label: item.title,
+          severity:
+            item.severity === "critical" || item.severity === "high"
+              ? "critical"
+              : item.severity === "medium"
+                ? "warning"
+                : "info",
+          metadata: { category: item.category, confidence: item.confidence, status: item.status },
+        })),
+    [brainInsights, selectedSession],
+  );
+
   const unifiedTimeline = useMemo(
     () =>
       mergeIncidentTimeline([
         tripTimeline,
+        selectedJobEvents,
         routeEvents,
         selectedIncidentEvents,
         selectedMaintenanceEvents,
         dispatcherEvents,
+        selectedBrainEvents,
       ]),
     [
       dispatcherEvents,
       routeEvents,
+      selectedBrainEvents,
+      selectedJobEvents,
       selectedIncidentEvents,
       selectedMaintenanceEvents,
       tripTimeline,
