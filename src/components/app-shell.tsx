@@ -49,6 +49,13 @@ const ALL: NavItem[] = [
     mobile: true,
   },
   {
+    label: "Control centre",
+    to: "/operations-control",
+    icon: Radio,
+    roles: ["admin", "fleet_manager", "dispatcher", "viewer"],
+    mobile: true,
+  },
+  {
     label: "Route intelligence",
     to: "/route-intelligence",
     icon: Route,

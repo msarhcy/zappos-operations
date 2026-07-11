@@ -19,6 +19,7 @@ import { Route as AuthenticatedVehiclesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedTrackingRouteImport } from './routes/_authenticated/tracking'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedRouteIntelligenceRouteImport } from './routes/_authenticated/route-intelligence'
+import { Route as AuthenticatedOperationsControlRouteImport } from './routes/_authenticated/operations-control'
 import { Route as AuthenticatedOperationsRouteImport } from './routes/_authenticated/operations'
 import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
 import { Route as AuthenticatedMaintenanceRouteImport } from './routes/_authenticated/maintenance'
@@ -79,6 +80,12 @@ const AuthenticatedRouteIntelligenceRoute =
   AuthenticatedRouteIntelligenceRouteImport.update({
     id: '/route-intelligence',
     path: '/route-intelligence',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedOperationsControlRoute =
+  AuthenticatedOperationsControlRouteImport.update({
+    id: '/operations-control',
+    path: '/operations-control',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedOperationsRoute = AuthenticatedOperationsRouteImport.update({
@@ -156,6 +163,7 @@ export interface FileRoutesByFullPath {
   '/maintenance': typeof AuthenticatedMaintenanceRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/operations': typeof AuthenticatedOperationsRoute
+  '/operations-control': typeof AuthenticatedOperationsControlRoute
   '/route-intelligence': typeof AuthenticatedRouteIntelligenceRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/tracking': typeof AuthenticatedTrackingRoute
@@ -178,6 +186,7 @@ export interface FileRoutesByTo {
   '/maintenance': typeof AuthenticatedMaintenanceRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/operations': typeof AuthenticatedOperationsRoute
+  '/operations-control': typeof AuthenticatedOperationsControlRoute
   '/route-intelligence': typeof AuthenticatedRouteIntelligenceRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/tracking': typeof AuthenticatedTrackingRoute
@@ -202,6 +211,7 @@ export interface FileRoutesById {
   '/_authenticated/maintenance': typeof AuthenticatedMaintenanceRoute
   '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
   '/_authenticated/operations': typeof AuthenticatedOperationsRoute
+  '/_authenticated/operations-control': typeof AuthenticatedOperationsControlRoute
   '/_authenticated/route-intelligence': typeof AuthenticatedRouteIntelligenceRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/tracking': typeof AuthenticatedTrackingRoute
@@ -226,6 +236,7 @@ export interface FileRouteTypes {
     | '/maintenance'
     | '/notifications'
     | '/operations'
+    | '/operations-control'
     | '/route-intelligence'
     | '/settings'
     | '/tracking'
@@ -248,6 +259,7 @@ export interface FileRouteTypes {
     | '/maintenance'
     | '/notifications'
     | '/operations'
+    | '/operations-control'
     | '/route-intelligence'
     | '/settings'
     | '/tracking'
@@ -271,6 +283,7 @@ export interface FileRouteTypes {
     | '/_authenticated/maintenance'
     | '/_authenticated/notifications'
     | '/_authenticated/operations'
+    | '/_authenticated/operations-control'
     | '/_authenticated/route-intelligence'
     | '/_authenticated/settings'
     | '/_authenticated/tracking'
@@ -356,6 +369,13 @@ declare module '@tanstack/react-router' {
       path: '/route-intelligence'
       fullPath: '/route-intelligence'
       preLoaderRoute: typeof AuthenticatedRouteIntelligenceRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/operations-control': {
+      id: '/_authenticated/operations-control'
+      path: '/operations-control'
+      fullPath: '/operations-control'
+      preLoaderRoute: typeof AuthenticatedOperationsControlRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/operations': {
@@ -450,6 +470,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMaintenanceRoute: typeof AuthenticatedMaintenanceRoute
   AuthenticatedNotificationsRoute: typeof AuthenticatedNotificationsRoute
   AuthenticatedOperationsRoute: typeof AuthenticatedOperationsRoute
+  AuthenticatedOperationsControlRoute: typeof AuthenticatedOperationsControlRoute
   AuthenticatedRouteIntelligenceRoute: typeof AuthenticatedRouteIntelligenceRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedTrackingRoute: typeof AuthenticatedTrackingRoute
@@ -468,6 +489,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMaintenanceRoute: AuthenticatedMaintenanceRoute,
   AuthenticatedNotificationsRoute: AuthenticatedNotificationsRoute,
   AuthenticatedOperationsRoute: AuthenticatedOperationsRoute,
+  AuthenticatedOperationsControlRoute: AuthenticatedOperationsControlRoute,
   AuthenticatedRouteIntelligenceRoute: AuthenticatedRouteIntelligenceRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedTrackingRoute: AuthenticatedTrackingRoute,
