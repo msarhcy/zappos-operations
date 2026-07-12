@@ -317,6 +317,7 @@ function HardwareReadinessPage() {
       deviceType: selectedDevice.device_type,
       deviceStatus: selectedDevice.status,
       simulated: true,
+      deviceSimulated: selectedDevice.simulated,
       payload,
     });
     if (!validation.ok) {
@@ -597,8 +598,10 @@ function DiagnosticsPanel({
             </div>
             <p className="mt-2 text-xs text-muted-foreground">Possible causes</p>
             <p className="text-sm">
-              {health?.possibleCauses.join("; ") || "No confirmed fault. Simulation evidence only."}
+              {health?.possibleCauses.join("; ") || "Simulation evidence is limited."}
             </p>
+            <p className="mt-2 text-xs text-muted-foreground">Evidence available</p>
+            <p className="text-sm">Simulation records, diagnostics metadata, and command audit.</p>
             <p className="mt-2 text-xs text-muted-foreground">Recommended checks</p>
             <p className="text-sm">
               {health?.recommendedChecks.join("; ") || "Continue monitoring simulated readiness."}
@@ -623,7 +626,8 @@ function CommandPanel({
   device: DeviceRow | null;
   onCommand: (commandType: string, payload?: Record<string, unknown>) => void;
 }) {
-  const disabled = !canRun || !device || busy;
+  const disabled =
+    !canRun || !device || !device.simulated || device.device_type !== "SIMULATOR" || busy;
   return (
     <Card className="p-4">
       <div className="mb-3 flex items-center gap-2">

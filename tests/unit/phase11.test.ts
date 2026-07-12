@@ -185,19 +185,38 @@ describe("phase 11 command and firmware safety", () => {
     expect(
       validateSimulatedCommand({
         commandType: "request_status",
-        deviceType: "ZAPP_BOX",
+        deviceType: "SIMULATOR",
         deviceStatus: "active",
         simulated: true,
+        deviceSimulated: true,
       }).ok,
     ).toBe(true);
     expect(
       validateSimulatedCommand({
-        commandType: "reboot_simulator",
+        commandType: "request_status",
         deviceType: "ZAPP_BOX",
         deviceStatus: "active",
         simulated: true,
       }).ok,
     ).toBe(false);
+    expect(
+      validateSimulatedCommand({
+        commandType: "request_status",
+        deviceType: "SIMULATOR",
+        deviceStatus: "active",
+        simulated: true,
+        deviceSimulated: false,
+      }).issues,
+    ).toContain("Phase 11 commands can only target simulator devices");
+    expect(
+      validateSimulatedCommand({
+        commandType: "switch_power",
+        deviceType: "SIMULATOR",
+        deviceStatus: "blocked",
+        simulated: true,
+        deviceSimulated: true,
+      }).issues,
+    ).toContain("Device cannot accept simulator commands");
     expect(
       commandIdempotencyKey({
         companyId: "Company-1",
@@ -234,6 +253,22 @@ describe("phase 11 command and firmware safety", () => {
         },
       ),
     ).toBe(true);
+    expect(
+      isFirmwareCompatible(
+        {
+          hardwareModel: "ZAPP-BOX",
+          hardwareRevision: "B1",
+          firmwareVersion: "2.0.0",
+        },
+        {
+          version: "2.0.0",
+          channel: "stable",
+          hardwareModel: "ZAPP-BOX",
+          minimumBootloader: "1.0.0",
+          status: "approved",
+        },
+      ),
+    ).toBe(false);
   });
 });
 

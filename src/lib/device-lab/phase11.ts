@@ -503,15 +503,16 @@ export function validateSimulatedCommand(input: {
   deviceType: DeviceType;
   deviceStatus: DeviceStatus;
   simulated: boolean;
+  deviceSimulated?: boolean;
   payload?: Record<string, unknown>;
 }) {
   const issues: string[] = [];
   if (!input.simulated) issues.push("Phase 11 commands must be explicitly simulated");
+  if (input.deviceSimulated !== true || input.deviceType !== "SIMULATOR") {
+    issues.push("Phase 11 commands can only target simulator devices");
+  }
   if (["retired", "blocked"].includes(input.deviceStatus))
     issues.push("Device cannot accept simulator commands");
-  if (input.deviceType !== "SIMULATOR" && input.commandType === "reboot_simulator") {
-    issues.push("Reboot simulator is only valid for simulator devices");
-  }
   if (
     input.commandType === "set_firmware_version" &&
     typeof input.payload?.firmware_version !== "string"
@@ -556,11 +557,12 @@ export function isFirmwareCompatible(device: DeviceFirmwareInput, firmware: Firm
   if (firmware.status !== "approved") return false;
   if (normalizeIdentifier(device.hardwareModel) !== normalizeIdentifier(firmware.hardwareModel))
     return false;
-  if (
-    firmware.minimumBootloader &&
-    compareSemver(device.bootloaderVersion, firmware.minimumBootloader)! < 0
-  ) {
-    return false;
+  if (firmware.minimumBootloader) {
+    const bootloaderComparison = compareSemver(
+      device.bootloaderVersion,
+      firmware.minimumBootloader,
+    );
+    if (bootloaderComparison === null || bootloaderComparison < 0) return false;
   }
   if (
     firmware.minimumHardwareRevision &&
