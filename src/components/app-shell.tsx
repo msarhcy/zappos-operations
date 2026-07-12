@@ -20,6 +20,7 @@ import {
   Route,
   BrainCircuit,
   Cpu,
+  HardHat,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompany } from "@/lib/company-context";
@@ -72,6 +73,12 @@ const ALL: NavItem[] = [
     label: "Hardware readiness",
     to: "/hardware-readiness",
     icon: Cpu,
+    roles: ["admin", "fleet_manager", "dispatcher", "viewer"],
+  },
+  {
+    label: "Field deployment",
+    to: "/field-deployment",
+    icon: HardHat,
     roles: ["admin", "fleet_manager", "dispatcher", "viewer"],
   },
   { label: "Operations", to: "/operations", icon: ClipboardList, mobile: true },

@@ -8,6 +8,7 @@ const protectedRoutes = [
   "/operations",
   "/operations-control",
   "/hardware-readiness",
+  "/field-deployment",
   "/tracking",
   "/route-intelligence",
   "/brain",
