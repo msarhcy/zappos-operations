@@ -19,6 +19,7 @@ import {
   MapPinned,
   Route,
   BrainCircuit,
+  Cpu,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompany } from "@/lib/company-context";
@@ -65,6 +66,12 @@ const ALL: NavItem[] = [
     label: "Zapp Brain",
     to: "/brain",
     icon: BrainCircuit,
+    roles: ["admin", "fleet_manager", "dispatcher", "viewer"],
+  },
+  {
+    label: "Hardware readiness",
+    to: "/hardware-readiness",
+    icon: Cpu,
     roles: ["admin", "fleet_manager", "dispatcher", "viewer"],
   },
   { label: "Operations", to: "/operations", icon: ClipboardList, mobile: true },

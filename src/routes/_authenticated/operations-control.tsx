@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   Bell,
   ClipboardList,
+  Cpu,
   FileText,
   ListFilter,
   Map as MapIcon,
@@ -136,6 +137,17 @@ interface HandoverRow {
   created_at: string;
 }
 
+interface SimulatedDeviceRow {
+  id: string;
+  status: string;
+  simulated: boolean;
+}
+
+interface QueryResult<T> {
+  data: T[] | null;
+  error: { message: string } | null;
+}
+
 interface SelectionState {
   vehicleId: string | null;
   driverId: string | null;
@@ -231,6 +243,7 @@ function OperationsControlPage() {
   const [notes, setNotes] = useState<OperationalNoteRow[]>([]);
   const [jobEvents, setJobEvents] = useState<JobEventRow[]>([]);
   const [handovers, setHandovers] = useState<HandoverRow[]>([]);
+  const [simulatedDevices, setSimulatedDevices] = useState<SimulatedDeviceRow[]>([]);
 
   useEffect(() => {
     if (!companyResetRef.current.initialized) {
@@ -261,6 +274,7 @@ function OperationsControlPage() {
     setNotes([]);
     setJobEvents([]);
     setHandovers([]);
+    setSimulatedDevices([]);
     setActionNote("");
     setNoteText("");
     setError(null);
@@ -288,6 +302,7 @@ function OperationsControlPage() {
         noteResult,
         jobEventResult,
         handoverResult,
+        simulatedDevicesResult,
       ] = await Promise.all([
         supabase.from("vehicles").select("*").eq("company_id", activeCompanyId).limit(500),
         supabase.from("drivers").select("*").eq("company_id", activeCompanyId).limit(500),
@@ -339,6 +354,28 @@ function OperationsControlPage() {
           .eq("company_id", activeCompanyId)
           .order("created_at", { ascending: false })
           .limit(20),
+        (
+          supabase as unknown as {
+            from: (table: string) => {
+              select: (columns: string) => {
+                eq: (
+                  column: string,
+                  value: unknown,
+                ) => {
+                  eq: (
+                    column: string,
+                    value: unknown,
+                  ) => { limit: (count: number) => Promise<QueryResult<SimulatedDeviceRow>> };
+                };
+              };
+            };
+          }
+        )
+          .from("devices")
+          .select("id, status, simulated")
+          .eq("company_id", activeCompanyId)
+          .eq("simulated", true)
+          .limit(50),
       ]);
 
       if (requestId !== requestRef.current) return;
@@ -355,6 +392,7 @@ function OperationsControlPage() {
         noteResult,
         jobEventResult,
         handoverResult,
+        simulatedDevicesResult,
       ]) {
         if (result.error) throw result.error;
       }
@@ -371,6 +409,7 @@ function OperationsControlPage() {
       setNotes((noteResult.data ?? []) as OperationalNoteRow[]);
       setJobEvents((jobEventResult.data ?? []) as JobEventRow[]);
       setHandovers((handoverResult.data ?? []) as HandoverRow[]);
+      setSimulatedDevices(simulatedDevicesResult.data ?? []);
     } catch (err) {
       if (requestId === requestRef.current) {
         setError(err instanceof Error ? err.message : "Could not load operations control centre");
@@ -699,6 +738,11 @@ function OperationsControlPage() {
           value={alerts.filter((item) => item.status === "escalated").length}
         />
         <Metric icon={ClipboardList} label="Handover items" value={handoverItems.length} />
+        <Metric
+          icon={Cpu}
+          label="Simulated devices"
+          value={`${simulatedDevices.filter((item) => item.status === "active").length}/${simulatedDevices.length}`}
+        />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_400px]">

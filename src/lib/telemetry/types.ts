@@ -3,7 +3,7 @@ export const JSON_ENCODER_VERSION = "json-v1";
 export const DRIVER_PHONE_SOURCE = "DRIVER_PHONE";
 
 export type TelemetrySource =
-  "DRIVER_PHONE" | "ZAPP_BOX" | "P1" | "ROAD_NODE" | "THIRD_PARTY_TELEMATICS";
+  "DRIVER_PHONE" | "ZAPP_BOX" | "P1" | "ROAD_NODE" | "THIRD_PARTY_TELEMATICS" | "SIMULATOR";
 
 export type MovementState = "moving" | "stationary" | "unknown";
 export type QualityStatus = "high" | "acceptable" | "poor" | "rejected";

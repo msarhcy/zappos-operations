@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   CloudSun,
   Clock,
+  Cpu,
   Gauge,
   List,
   Map as MapIcon,
@@ -173,6 +174,17 @@ interface JobEventRow {
   created_at: string;
 }
 
+interface SimulatedDeviceRow {
+  id: string;
+  status: string;
+  simulated: boolean;
+}
+
+interface QueryResult<T> {
+  data: T[] | null;
+  error: { message: string } | null;
+}
+
 function age(value: string | null) {
   if (!value) return "never";
   const seconds = Math.max(0, Math.floor((Date.now() - Date.parse(value)) / 1000));
@@ -238,6 +250,7 @@ function TrackingPage() {
   const [brainInsights, setBrainInsights] = useState<BrainInsightRow[]>([]);
   const [auditLog, setAuditLog] = useState<AuditRow[]>([]);
   const [jobEvents, setJobEvents] = useState<JobEventRow[]>([]);
+  const [simulatedDevices, setSimulatedDevices] = useState<SimulatedDeviceRow[]>([]);
   const [replayPlaying, setReplayPlaying] = useState(false);
   const [replaySpeed, setReplaySpeed] = useState<1 | 2 | 5>(1);
   const [replayIndex, setReplayIndex] = useState(0);
@@ -303,6 +316,7 @@ function TrackingPage() {
         brainResult,
         auditResult,
         jobEventsResult,
+        simulatedDevicesResult,
         queueStats,
       ] = await Promise.all([
         telemetryFrom<TrackingSessionRow>("tracking_sessions")
@@ -353,6 +367,28 @@ function TrackingPage() {
           .eq("company_id", activeCompanyId)
           .order("created_at", { ascending: false })
           .limit(100),
+        (
+          supabase as unknown as {
+            from: (table: string) => {
+              select: (columns: string) => {
+                eq: (
+                  column: string,
+                  value: unknown,
+                ) => {
+                  eq: (
+                    column: string,
+                    value: unknown,
+                  ) => { limit: (count: number) => Promise<QueryResult<SimulatedDeviceRow>> };
+                };
+              };
+            };
+          }
+        )
+          .from("devices")
+          .select("id, status, simulated")
+          .eq("company_id", activeCompanyId)
+          .eq("simulated", true)
+          .limit(50),
         getTelemetryQueueStats().catch(() => ({ pending: 0, failed: 1, total: 0 })),
       ]);
 
@@ -367,8 +403,13 @@ function TrackingPage() {
       if (brainResult.error) throw brainResult.error;
       if (auditResult.error) throw auditResult.error;
       if (jobEventsResult.error) throw jobEventsResult.error;
+      if (simulatedDevicesResult.error) throw simulatedDevicesResult.error;
 
-      const pointMetrics = pointsResult.data ?? [];
+      const pointMetrics = (pointsResult.data ?? []) as Array<{
+        quality_status: string;
+        quality_flags: string[] | null;
+        server_received_at: string;
+      }>;
       const nextLocations = ((latestResult.data ?? []) as LatestLocationRow[]).filter(
         isValidLocation,
       );
@@ -382,6 +423,7 @@ function TrackingPage() {
       setBrainInsights((brainResult.data ?? []) as BrainInsightRow[]);
       setAuditLog((auditResult.data ?? []) as AuditRow[]);
       setJobEvents((jobEventsResult.data ?? []) as JobEventRow[]);
+      setSimulatedDevices((simulatedDevicesResult.data ?? []) as unknown as SimulatedDeviceRow[]);
       setQueue(queueStats);
       setMetrics({
         pointsToday: pointMetrics.length,
@@ -846,6 +888,11 @@ function TrackingPage() {
         <Metric icon={Clock} label="Last telemetry age" value={age(metrics.latestTelemetryAt)} />
         <Metric icon={List} label="Upload queue" value={`${queue.pending}/${queue.total}`} />
         <Metric icon={ShieldCheck} label="Telemetry health" value={operationsHealth.status} />
+        <Metric
+          icon={Cpu}
+          label="Simulated devices"
+          value={`${simulatedDevices.filter((item) => item.status === "active").length}/${simulatedDevices.length}`}
+        />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
