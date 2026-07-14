@@ -12,9 +12,16 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as CustomerPortalRouteImport } from './routes/customer-portal'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CustomerPortalIndexRouteImport } from './routes/customer-portal/index'
+import { Route as ShareTokenRouteImport } from './routes/share/$token'
+import { Route as CustomerPortalShipmentsRouteImport } from './routes/customer-portal/shipments'
+import { Route as CustomerPortalSettingsRouteImport } from './routes/customer-portal/settings'
+import { Route as CustomerPortalRequestsRouteImport } from './routes/customer-portal/requests'
+import { Route as CustomerPortalDocumentsRouteImport } from './routes/customer-portal/documents'
 import { Route as AuthenticatedVehiclesRouteImport } from './routes/_authenticated/vehicles'
 import { Route as AuthenticatedTrackingRouteImport } from './routes/_authenticated/tracking'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
@@ -32,7 +39,9 @@ import { Route as AuthenticatedDocumentsRouteImport } from './routes/_authentica
 import { Route as AuthenticatedDispatchRouteImport } from './routes/_authenticated/dispatch'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCustomersRouteImport } from './routes/_authenticated/customers'
+import { Route as AuthenticatedCustomerPortalRouteImport } from './routes/_authenticated/customer-portal'
 import { Route as AuthenticatedBrainRouteImport } from './routes/_authenticated/brain'
+import { Route as CustomerPortalShipmentsJobIdRouteImport } from './routes/customer-portal/shipments/$jobId'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -49,6 +58,11 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CustomerPortalRoute = CustomerPortalRouteImport.update({
+  id: '/customer-portal',
+  path: '/customer-portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -62,6 +76,36 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const CustomerPortalIndexRoute = CustomerPortalIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CustomerPortalRoute,
+} as any)
+const ShareTokenRoute = ShareTokenRouteImport.update({
+  id: '/share/$token',
+  path: '/share/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CustomerPortalShipmentsRoute = CustomerPortalShipmentsRouteImport.update({
+  id: '/shipments',
+  path: '/shipments',
+  getParentRoute: () => CustomerPortalRoute,
+} as any)
+const CustomerPortalSettingsRoute = CustomerPortalSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => CustomerPortalRoute,
+} as any)
+const CustomerPortalRequestsRoute = CustomerPortalRequestsRouteImport.update({
+  id: '/requests',
+  path: '/requests',
+  getParentRoute: () => CustomerPortalRoute,
+} as any)
+const CustomerPortalDocumentsRoute = CustomerPortalDocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
+  getParentRoute: () => CustomerPortalRoute,
 } as any)
 const AuthenticatedVehiclesRoute = AuthenticatedVehiclesRouteImport.update({
   id: '/vehicles',
@@ -154,15 +198,28 @@ const AuthenticatedCustomersRoute = AuthenticatedCustomersRouteImport.update({
   path: '/customers',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCustomerPortalRoute =
+  AuthenticatedCustomerPortalRouteImport.update({
+    id: '/customer-portal',
+    path: '/customer-portal',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedBrainRoute = AuthenticatedBrainRouteImport.update({
   id: '/brain',
   path: '/brain',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const CustomerPortalShipmentsJobIdRoute =
+  CustomerPortalShipmentsJobIdRouteImport.update({
+    id: '/$jobId',
+    path: '/$jobId',
+    getParentRoute: () => CustomerPortalShipmentsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/customer-portal': typeof AuthenticatedCustomerPortalRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/onboarding': typeof OnboardingRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -184,6 +241,13 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/tracking': typeof AuthenticatedTrackingRoute
   '/vehicles': typeof AuthenticatedVehiclesRoute
+  '/customer-portal/documents': typeof CustomerPortalDocumentsRoute
+  '/customer-portal/requests': typeof CustomerPortalRequestsRoute
+  '/customer-portal/settings': typeof CustomerPortalSettingsRoute
+  '/customer-portal/shipments': typeof CustomerPortalShipmentsRouteWithChildren
+  '/share/$token': typeof ShareTokenRoute
+  '/customer-portal/': typeof CustomerPortalIndexRoute
+  '/customer-portal/shipments/$jobId': typeof CustomerPortalShipmentsJobIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -192,6 +256,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/reset-password': typeof ResetPasswordRoute
   '/brain': typeof AuthenticatedBrainRoute
+  '/customer-portal': typeof CustomerPortalIndexRoute
   '/customers': typeof AuthenticatedCustomersRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/dispatch': typeof AuthenticatedDispatchRoute
@@ -209,16 +274,24 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/tracking': typeof AuthenticatedTrackingRoute
   '/vehicles': typeof AuthenticatedVehiclesRoute
+  '/customer-portal/documents': typeof CustomerPortalDocumentsRoute
+  '/customer-portal/requests': typeof CustomerPortalRequestsRoute
+  '/customer-portal/settings': typeof CustomerPortalSettingsRoute
+  '/customer-portal/shipments': typeof CustomerPortalShipmentsRouteWithChildren
+  '/share/$token': typeof ShareTokenRoute
+  '/customer-portal/shipments/$jobId': typeof CustomerPortalShipmentsJobIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/customer-portal': typeof CustomerPortalRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/onboarding': typeof OnboardingRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/brain': typeof AuthenticatedBrainRoute
+  '/_authenticated/customer-portal': typeof AuthenticatedCustomerPortalRoute
   '/_authenticated/customers': typeof AuthenticatedCustomersRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/dispatch': typeof AuthenticatedDispatchRoute
@@ -236,12 +309,20 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/tracking': typeof AuthenticatedTrackingRoute
   '/_authenticated/vehicles': typeof AuthenticatedVehiclesRoute
+  '/customer-portal/documents': typeof CustomerPortalDocumentsRoute
+  '/customer-portal/requests': typeof CustomerPortalRequestsRoute
+  '/customer-portal/settings': typeof CustomerPortalSettingsRoute
+  '/customer-portal/shipments': typeof CustomerPortalShipmentsRouteWithChildren
+  '/share/$token': typeof ShareTokenRoute
+  '/customer-portal/': typeof CustomerPortalIndexRoute
+  '/customer-portal/shipments/$jobId': typeof CustomerPortalShipmentsJobIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/auth'
+    | '/customer-portal'
     | '/forgot-password'
     | '/onboarding'
     | '/reset-password'
@@ -263,6 +344,13 @@ export interface FileRouteTypes {
     | '/settings'
     | '/tracking'
     | '/vehicles'
+    | '/customer-portal/documents'
+    | '/customer-portal/requests'
+    | '/customer-portal/settings'
+    | '/customer-portal/shipments'
+    | '/share/$token'
+    | '/customer-portal/'
+    | '/customer-portal/shipments/$jobId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -271,6 +359,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/reset-password'
     | '/brain'
+    | '/customer-portal'
     | '/customers'
     | '/dashboard'
     | '/dispatch'
@@ -288,15 +377,23 @@ export interface FileRouteTypes {
     | '/settings'
     | '/tracking'
     | '/vehicles'
+    | '/customer-portal/documents'
+    | '/customer-portal/requests'
+    | '/customer-portal/settings'
+    | '/customer-portal/shipments'
+    | '/share/$token'
+    | '/customer-portal/shipments/$jobId'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/customer-portal'
     | '/forgot-password'
     | '/onboarding'
     | '/reset-password'
     | '/_authenticated/brain'
+    | '/_authenticated/customer-portal'
     | '/_authenticated/customers'
     | '/_authenticated/dashboard'
     | '/_authenticated/dispatch'
@@ -314,15 +411,24 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/tracking'
     | '/_authenticated/vehicles'
+    | '/customer-portal/documents'
+    | '/customer-portal/requests'
+    | '/customer-portal/settings'
+    | '/customer-portal/shipments'
+    | '/share/$token'
+    | '/customer-portal/'
+    | '/customer-portal/shipments/$jobId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  CustomerPortalRoute: typeof CustomerPortalRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   OnboardingRoute: typeof OnboardingRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ShareTokenRoute: typeof ShareTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -348,6 +454,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/customer-portal': {
+      id: '/customer-portal'
+      path: '/customer-portal'
+      fullPath: '/customer-portal'
+      preLoaderRoute: typeof CustomerPortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -368,6 +481,48 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/customer-portal/': {
+      id: '/customer-portal/'
+      path: '/'
+      fullPath: '/customer-portal/'
+      preLoaderRoute: typeof CustomerPortalIndexRouteImport
+      parentRoute: typeof CustomerPortalRoute
+    }
+    '/share/$token': {
+      id: '/share/$token'
+      path: '/share/$token'
+      fullPath: '/share/$token'
+      preLoaderRoute: typeof ShareTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/customer-portal/shipments': {
+      id: '/customer-portal/shipments'
+      path: '/shipments'
+      fullPath: '/customer-portal/shipments'
+      preLoaderRoute: typeof CustomerPortalShipmentsRouteImport
+      parentRoute: typeof CustomerPortalRoute
+    }
+    '/customer-portal/settings': {
+      id: '/customer-portal/settings'
+      path: '/settings'
+      fullPath: '/customer-portal/settings'
+      preLoaderRoute: typeof CustomerPortalSettingsRouteImport
+      parentRoute: typeof CustomerPortalRoute
+    }
+    '/customer-portal/requests': {
+      id: '/customer-portal/requests'
+      path: '/requests'
+      fullPath: '/customer-portal/requests'
+      preLoaderRoute: typeof CustomerPortalRequestsRouteImport
+      parentRoute: typeof CustomerPortalRoute
+    }
+    '/customer-portal/documents': {
+      id: '/customer-portal/documents'
+      path: '/documents'
+      fullPath: '/customer-portal/documents'
+      preLoaderRoute: typeof CustomerPortalDocumentsRouteImport
+      parentRoute: typeof CustomerPortalRoute
     }
     '/_authenticated/vehicles': {
       id: '/_authenticated/vehicles'
@@ -488,6 +643,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCustomersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/customer-portal': {
+      id: '/_authenticated/customer-portal'
+      path: '/customer-portal'
+      fullPath: '/customer-portal'
+      preLoaderRoute: typeof AuthenticatedCustomerPortalRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/brain': {
       id: '/_authenticated/brain'
       path: '/brain'
@@ -495,11 +657,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBrainRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/customer-portal/shipments/$jobId': {
+      id: '/customer-portal/shipments/$jobId'
+      path: '/$jobId'
+      fullPath: '/customer-portal/shipments/$jobId'
+      preLoaderRoute: typeof CustomerPortalShipmentsJobIdRouteImport
+      parentRoute: typeof CustomerPortalShipmentsRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedBrainRoute: typeof AuthenticatedBrainRoute
+  AuthenticatedCustomerPortalRoute: typeof AuthenticatedCustomerPortalRoute
   AuthenticatedCustomersRoute: typeof AuthenticatedCustomersRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDispatchRoute: typeof AuthenticatedDispatchRoute
@@ -521,6 +691,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBrainRoute: AuthenticatedBrainRoute,
+  AuthenticatedCustomerPortalRoute: AuthenticatedCustomerPortalRoute,
   AuthenticatedCustomersRoute: AuthenticatedCustomersRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDispatchRoute: AuthenticatedDispatchRoute,
@@ -543,13 +714,49 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface CustomerPortalShipmentsRouteChildren {
+  CustomerPortalShipmentsJobIdRoute: typeof CustomerPortalShipmentsJobIdRoute
+}
+
+const CustomerPortalShipmentsRouteChildren: CustomerPortalShipmentsRouteChildren =
+  {
+    CustomerPortalShipmentsJobIdRoute: CustomerPortalShipmentsJobIdRoute,
+  }
+
+const CustomerPortalShipmentsRouteWithChildren =
+  CustomerPortalShipmentsRoute._addFileChildren(
+    CustomerPortalShipmentsRouteChildren,
+  )
+
+interface CustomerPortalRouteChildren {
+  CustomerPortalDocumentsRoute: typeof CustomerPortalDocumentsRoute
+  CustomerPortalRequestsRoute: typeof CustomerPortalRequestsRoute
+  CustomerPortalSettingsRoute: typeof CustomerPortalSettingsRoute
+  CustomerPortalShipmentsRoute: typeof CustomerPortalShipmentsRouteWithChildren
+  CustomerPortalIndexRoute: typeof CustomerPortalIndexRoute
+}
+
+const CustomerPortalRouteChildren: CustomerPortalRouteChildren = {
+  CustomerPortalDocumentsRoute: CustomerPortalDocumentsRoute,
+  CustomerPortalRequestsRoute: CustomerPortalRequestsRoute,
+  CustomerPortalSettingsRoute: CustomerPortalSettingsRoute,
+  CustomerPortalShipmentsRoute: CustomerPortalShipmentsRouteWithChildren,
+  CustomerPortalIndexRoute: CustomerPortalIndexRoute,
+}
+
+const CustomerPortalRouteWithChildren = CustomerPortalRoute._addFileChildren(
+  CustomerPortalRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  CustomerPortalRoute: CustomerPortalRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
   OnboardingRoute: OnboardingRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ShareTokenRoute: ShareTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

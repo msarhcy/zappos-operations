@@ -8,6 +8,264 @@ export type Database = {
   };
   public: {
     Tables: {
+      customer_acknowledgements: {
+        Row: {
+          acknowledgement_type: string;
+          company_id: string;
+          created_at: string;
+          customer_id: string;
+          entity_id: string | null;
+          entity_type: string | null;
+          id: string;
+          job_id: string | null;
+          notes: string | null;
+          user_id: string;
+        };
+        Insert: {
+          acknowledgement_type: string;
+          company_id: string;
+          created_at?: string;
+          customer_id: string;
+          entity_id?: string | null;
+          entity_type?: string | null;
+          id?: string;
+          job_id?: string | null;
+          notes?: string | null;
+          user_id: string;
+        };
+        Update: {
+          acknowledgement_type?: string;
+          company_id?: string;
+          created_at?: string;
+          customer_id?: string;
+          entity_id?: string | null;
+          entity_type?: string | null;
+          id?: string;
+          job_id?: string | null;
+          notes?: string | null;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      customer_portal_audit_logs: {
+        Row: {
+          company_id: string;
+          created_at: string;
+          customer_id: string | null;
+          detail: string | null;
+          entity_id: string | null;
+          entity_type: string | null;
+          event_type: string;
+          id: string;
+          user_id: string | null;
+        };
+        Insert: {
+          company_id: string;
+          created_at?: string;
+          customer_id?: string | null;
+          detail?: string | null;
+          entity_id?: string | null;
+          entity_type?: string | null;
+          event_type: string;
+          id?: string;
+          user_id?: string | null;
+        };
+        Update: {
+          company_id?: string;
+          created_at?: string;
+          customer_id?: string | null;
+          detail?: string | null;
+          entity_id?: string | null;
+          entity_type?: string | null;
+          event_type?: string;
+          id?: string;
+          user_id?: string | null;
+        };
+        Relationships: [];
+      };
+      customer_portal_invitations: {
+        Row: {
+          accepted_at: string | null;
+          company_id: string;
+          created_at: string;
+          customer_id: string;
+          expires_at: string;
+          id: string;
+          invited_by: string | null;
+          invited_email: string;
+          role: string;
+          revoked_at: string | null;
+          status: string;
+          token_hash: string;
+          updated_at: string;
+          user_id: string | null;
+        };
+        Insert: {
+          accepted_at?: string | null;
+          company_id: string;
+          created_at?: string;
+          customer_id: string;
+          expires_at: string;
+          id?: string;
+          invited_by?: string | null;
+          invited_email: string;
+          role?: string;
+          revoked_at?: string | null;
+          status?: string;
+          token_hash: string;
+          updated_at?: string;
+          user_id?: string | null;
+        };
+        Update: {
+          accepted_at?: string | null;
+          company_id?: string;
+          created_at?: string;
+          customer_id?: string;
+          expires_at?: string;
+          id?: string;
+          invited_by?: string | null;
+          invited_email?: string;
+          role?: string;
+          revoked_at?: string | null;
+          status?: string;
+          token_hash?: string;
+          updated_at?: string;
+          user_id?: string | null;
+        };
+        Relationships: [];
+      };
+      customer_portal_memberships: {
+        Row: {
+          accepted_at: string | null;
+          company_id: string;
+          created_at: string;
+          customer_id: string;
+          id: string;
+          invited_at: string | null;
+          invited_by: string | null;
+          revoked_at: string | null;
+          role: string;
+          status: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          accepted_at?: string | null;
+          company_id: string;
+          created_at?: string;
+          customer_id: string;
+          id?: string;
+          invited_at?: string | null;
+          invited_by?: string | null;
+          revoked_at?: string | null;
+          role?: string;
+          status?: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          accepted_at?: string | null;
+          company_id?: string;
+          created_at?: string;
+          customer_id?: string;
+          id?: string;
+          invited_at?: string | null;
+          invited_by?: string | null;
+          revoked_at?: string | null;
+          role?: string;
+          status?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      customer_portal_preferences: {
+        Row: {
+          company_id: string;
+          created_at: string;
+          customer_id: string;
+          email_notifications: boolean | null;
+          id: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          company_id: string;
+          created_at?: string;
+          customer_id: string;
+          email_notifications?: boolean | null;
+          id?: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          company_id?: string;
+          created_at?: string;
+          customer_id?: string;
+          email_notifications?: boolean | null;
+          id?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      customer_service_requests: {
+        Row: {
+          assigned_to: string | null;
+          category: string;
+          company_id: string;
+          created_at: string;
+          created_by_user_id: string;
+          customer_id: string;
+          customer_visible_response: string | null;
+          id: string;
+          internal_notes: string | null;
+          job_id: string | null;
+          message: string | null;
+          priority: string;
+          resolved_at: string | null;
+          status: string;
+          subject: string;
+          updated_at: string;
+        };
+        Insert: {
+          assigned_to?: string | null;
+          category: string;
+          company_id: string;
+          created_at?: string;
+          created_by_user_id: string;
+          customer_id: string;
+          customer_visible_response?: string | null;
+          id?: string;
+          internal_notes?: string | null;
+          job_id?: string | null;
+          message?: string | null;
+          priority?: string;
+          resolved_at?: string | null;
+          status?: string;
+          subject: string;
+          updated_at?: string;
+        };
+        Update: {
+          assigned_to?: string | null;
+          category?: string;
+          company_id?: string;
+          created_at?: string;
+          created_by_user_id?: string;
+          customer_id?: string;
+          customer_visible_response?: string | null;
+          id?: string;
+          internal_notes?: string | null;
+          job_id?: string | null;
+          message?: string | null;
+          priority?: string;
+          resolved_at?: string | null;
+          status?: string;
+          subject?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       companies: {
         Row: {
           business_type: Database["public"]["Enums"]["business_type"];
@@ -134,6 +392,7 @@ export type Database = {
           issue_date: string | null;
           name: string;
           notes: string | null;
+          visibility: string | null;
           owner_id: string;
           owner_type: Database["public"]["Enums"]["document_owner_type"];
           updated_at: string;
@@ -149,6 +408,7 @@ export type Database = {
           issue_date?: string | null;
           name: string;
           notes?: string | null;
+          visibility?: string | null;
           owner_id: string;
           owner_type: Database["public"]["Enums"]["document_owner_type"];
           updated_at?: string;
@@ -164,6 +424,7 @@ export type Database = {
           issue_date?: string | null;
           name?: string;
           notes?: string | null;
+          visibility?: string | null;
           owner_id?: string;
           owner_type?: Database["public"]["Enums"]["document_owner_type"];
           updated_at?: string;
