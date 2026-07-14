@@ -40,6 +40,7 @@ import { Route as AuthenticatedDispatchRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCustomersRouteImport } from './routes/_authenticated/customers'
 import { Route as AuthenticatedCustomerPortalRouteImport } from './routes/_authenticated/customer-portal'
+import { Route as AuthenticatedCommandCentreRouteImport } from './routes/_authenticated/command-centre'
 import { Route as AuthenticatedBrainRouteImport } from './routes/_authenticated/brain'
 import { Route as CustomerPortalShipmentsJobIdRouteImport } from './routes/customer-portal/shipments/$jobId'
 
@@ -204,6 +205,12 @@ const AuthenticatedCustomerPortalRoute =
     path: '/customer-portal',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCommandCentreRoute =
+  AuthenticatedCommandCentreRouteImport.update({
+    id: '/command-centre',
+    path: '/command-centre',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedBrainRoute = AuthenticatedBrainRouteImport.update({
   id: '/brain',
   path: '/brain',
@@ -224,6 +231,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/reset-password': typeof ResetPasswordRoute
   '/brain': typeof AuthenticatedBrainRoute
+  '/command-centre': typeof AuthenticatedCommandCentreRoute
   '/customers': typeof AuthenticatedCustomersRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/dispatch': typeof AuthenticatedDispatchRoute
@@ -256,6 +264,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/reset-password': typeof ResetPasswordRoute
   '/brain': typeof AuthenticatedBrainRoute
+  '/command-centre': typeof AuthenticatedCommandCentreRoute
   '/customer-portal': typeof CustomerPortalIndexRoute
   '/customers': typeof AuthenticatedCustomersRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -291,6 +300,7 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/brain': typeof AuthenticatedBrainRoute
+  '/_authenticated/command-centre': typeof AuthenticatedCommandCentreRoute
   '/_authenticated/customer-portal': typeof AuthenticatedCustomerPortalRoute
   '/_authenticated/customers': typeof AuthenticatedCustomersRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -327,6 +337,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/reset-password'
     | '/brain'
+    | '/command-centre'
     | '/customers'
     | '/dashboard'
     | '/dispatch'
@@ -359,6 +370,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/reset-password'
     | '/brain'
+    | '/command-centre'
     | '/customer-portal'
     | '/customers'
     | '/dashboard'
@@ -393,6 +405,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/reset-password'
     | '/_authenticated/brain'
+    | '/_authenticated/command-centre'
     | '/_authenticated/customer-portal'
     | '/_authenticated/customers'
     | '/_authenticated/dashboard'
@@ -650,6 +663,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCustomerPortalRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/command-centre': {
+      id: '/_authenticated/command-centre'
+      path: '/command-centre'
+      fullPath: '/command-centre'
+      preLoaderRoute: typeof AuthenticatedCommandCentreRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/brain': {
       id: '/_authenticated/brain'
       path: '/brain'
@@ -669,6 +689,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedBrainRoute: typeof AuthenticatedBrainRoute
+  AuthenticatedCommandCentreRoute: typeof AuthenticatedCommandCentreRoute
   AuthenticatedCustomerPortalRoute: typeof AuthenticatedCustomerPortalRoute
   AuthenticatedCustomersRoute: typeof AuthenticatedCustomersRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
@@ -691,6 +712,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBrainRoute: AuthenticatedBrainRoute,
+  AuthenticatedCommandCentreRoute: AuthenticatedCommandCentreRoute,
   AuthenticatedCustomerPortalRoute: AuthenticatedCustomerPortalRoute,
   AuthenticatedCustomersRoute: AuthenticatedCustomersRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,

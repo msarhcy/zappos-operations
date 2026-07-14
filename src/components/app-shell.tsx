@@ -42,6 +42,13 @@ interface NavItem {
 
 const ALL: NavItem[] = [
   { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard, mobile: true },
+  {
+    label: "Command centre",
+    to: "/command-centre",
+    icon: Radio,
+    roles: ["admin", "fleet_manager", "dispatcher", "viewer"],
+    mobile: true,
+  },
   { label: "Driver", to: "/driver", icon: Smartphone, roles: ["driver"], mobile: true },
   {
     label: "Tracking",
